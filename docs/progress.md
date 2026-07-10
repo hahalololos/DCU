@@ -1,13 +1,5 @@
 # 工作进度
 
-## 2026-07-10 19:47 Git 仓库管理说明
-
-- 在 `AGENTS.md` 明确 DCU、`vllm_cscc`、`mcp-ssh` 分别独立关联和管理。
-
-## 2026-07-10 DCU 根仓库初始化
-
-- 初始化 DCU 根目录 Git 仓库并配置 `origin` 为 `https://github.com/HaHas8468/DCU.git`；`mcp-ssh`、`vllm_cscc` 保持各自独立仓库，仅作为 Git 链接纳入根仓库；忽略本地 `.codegraph/` 索引缓存。
-
 ## 2026-07-10 19:13 UAST-2 Attention 结构重写计划
 
 - 新增 `docs/plans/qwen35_uast2_attention_structural_rewrite_plan_20260710_1913.md`；停止 Attention 参数扫描，主线改为 paged prefix、contiguous current chunk 与 online-softmax state merge。
