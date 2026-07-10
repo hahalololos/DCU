@@ -25,6 +25,14 @@ source env.sh
 - 路径：`.venv`、`vllm_cscc/`、`env.sh`、`.cache/` 均在上述目录下。`env.sh` 必须加载 DTK/HYHAL，并让 `vllm_cscc` 位于 `PYTHONPATH` 最前；否则可能导入全局 vLLM 或报 `No HIP GPUs are available`。
 - 启动 vLLM 前检查共享 GPU 与端口；不得影响队友。4B 可共享测试。
 
+## PRA26 容器状态提醒
+
+- Agent 不得自动创建、重启、停止或删除 PRA26 容器。
+- 远端操作前若发现 `scnet-docker` 不可达，应先通过 `scnet-login` 检查当前用户是否存在 RUNNING 作业。
+- 确认容器未启动、作业已结束，或疑似达到 4 小时限制时，立即停止远端构建与测试，提醒
+  用户在平台页面手动启动或重启容器。
+- 用户完成手动重启后，计算节点名和容器 IP 可能变化；Agent 应先刷新 `scnet-computer`、`scnet-docker` 的 SSH 配置并验证连接，再继续原任务。
+
 ## 比赛边界
 
 提交物仅为修改后的 `vllm_cscc` 源码。不得：

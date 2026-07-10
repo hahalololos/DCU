@@ -1,5 +1,12 @@
 # 工作进度
 
+## 2026-07-10 20:23 UAST-2 实施、初筛与回滚
+
+- 完成 paged prefix + contiguous suffix + LSE merge 和单 kernel 共享 `M/L/acc` 两版；UAST-2 定向 `4 passed`，现有 UA2D 回归 `10 passed`，数值/确定性通过。
+- 4B `q=4096` micro：三 kernel 版在 context `0/4K/16K/32K` 仅为当前 UA2D 的 `0.282x/0.281x/0.279x/0.278x`；融合版为 `0.163x/0.149x/0.146x/0.146x`。
+- profiler 的 `context=4K` 为 prefix `37.549 ms`、suffix `20.524 ms`、merge `0.220 ms`；已有 `prefix_prefill` 结构在 `4K/16K/32K` 也仅 `0.236x/0.178x/0.169x`，确认结构在 gfx936 上不适用。
+- 按 `<3%` 淘汰门槛删除全部 UAST-2 源码/测试/开关并同步远端；关键文件 SHA256 一致，工作树只保留此前 ALT-C 改动。未跑服务、精度或 27B，GPU 回到 `0%`。
+
 ## 2026-07-10 19:13 UAST-2 Attention 结构重写计划
 
 - 新增 `docs/plans/qwen35_uast2_attention_structural_rewrite_plan_20260710_1913.md`；停止 Attention 参数扫描，主线改为 paged prefix、contiguous current chunk 与 online-softmax state merge。

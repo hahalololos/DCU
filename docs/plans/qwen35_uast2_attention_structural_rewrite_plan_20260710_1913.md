@@ -12,6 +12,7 @@
 | 主要后端 | `TRITON_ATTN` / ROCm gfx936 |
 | 第一版实现语言 | Python + Triton；不修改 `csrc/` |
 | 默认状态 | 实验开关默认关闭，未命中严格 guard 时回退现有 UA2D |
+| 最终状态 | `2026-07-10 20:23` 完成实现与初筛，因 4B micro 严重退化已淘汰并回滚 |
 
 所有实验目录继续使用：
 
@@ -490,3 +491,78 @@ python -m pip show vllm
 6. 远端只做导入、静态和小 shape smoke，不启动 27B。
 7. 更新 `docs/progress.md`，再进入 S2 prefix partial-state kernel。
 
+## 13. 2026-07-10 实施结果
+
+### 13.1 已完成实现
+
+先后实现并验证两种结构：
+
+1. 三 kernel 版本：paged prefix partial state、contiguous suffix partial state、LSE merge。
+2. S7 融合版本：在单 kernel 内共享 `M/L/acc`，先处理 paged prefix，再处理 contiguous
+   causal suffix，直接输出最终结果。
+
+两版均使用严格 Qwen3.5/gfx936 guard、默认关闭开关和现有 UA2D 回退；未修改模型、scheduler、
+测试脚本或评测参数。
+
+### 13.2 正确性结果
+
+- UAST-2 4B/27B 定向测试：`4 passed`；覆盖空 prefix、528/784 block 边界、非连续物理
+  block、GQA=6、重复确定性和 `q_len=1` 回退。
+- 现有 UA2D CORR-K0~K3 与 4095/4096 长 query 回归：`10 passed`。
+- 三 kernel 版相对当前 UA2D max abs diff 为 `0~0.000977`。
+- 融合版定向测试：`4 passed`，输出重复 bitwise 稳定。
+
+### 13.3 4B micro 结果
+
+固定 Qwen3.5-4B、BF16、`q_len=4096`，只比较当前 UA2D 与 UAST-2 结构开关，不进行参数
+扫描。
+
+#### 三 kernel partial-state + merge
+
+| context | 当前 UA2D median | UAST-2 median | 相对速度 |
+| ---: | ---: | ---: | ---: |
+| `0` | `6.092 ms` | `21.597 ms` | `0.282x` |
+| `4K` | `16.525 ms` | `58.815 ms` | `0.281x` |
+| `16K` | `47.485 ms` | `170.271 ms` | `0.279x` |
+| `32K` | `88.875 ms` | `319.780 ms` | `0.278x` |
+
+`context=4K` profiler：prefix `37.549 ms`、suffix `20.524 ms`、merge `0.220 ms`。瓶颈在
+两个 partial-state kernel，而非 merge。
+
+#### 单 kernel 共享 M/L/acc 融合
+
+| context | 当前 UA2D median | 融合 UAST-2 median | 相对速度 |
+| ---: | ---: | ---: | ---: |
+| `0` | `6.119 ms` | `37.569 ms` | `0.163x` |
+| `4K` | `16.516 ms` | `110.660 ms` | `0.149x` |
+| `16K` | `47.467 ms` | `324.034 ms` | `0.146x` |
+| `32K` | `88.910 ms` | `610.368 ms` | `0.146x` |
+
+融合后出现更严重的寄存器/occupancy 压力，未形成收益。
+
+#### 仓库已有 prefix_prefill 结构交叉验证
+
+将当前 NHD cache 以无复制 stride view 接入已有
+`prefix_prefill.context_attention_fwd()`：
+
+| context | 当前 UA2D median | prefix_prefill median | 相对速度 |
+| ---: | ---: | ---: | ---: |
+| `0` | `6.087 ms` | `5.965 ms` | `1.021x` |
+| `4K` | `16.519 ms` | `69.858 ms` | `0.236x` |
+| `16K` | `47.485 ms` | `266.099 ms` | `0.178x` |
+| `32K` | `89.207 ms` | `529.378 ms` | `0.169x` |
+
+已有独立实现同样在 prefix 增长后严重退化，说明问题不是首版代码细节。当前 UA2D 的
+GQA-grouped paged kernel 在 gfx936 上显著优于 prefix/current-chunk 结构拆分。
+
+### 13.4 最终决策
+
+按第 11 节决策表，候选远低于 `3%` 保留门槛：
+
+- 不运行 4B 服务端三档和精度测试，因为 kernel micro 已确定严重回退。
+- 不启动 27B。
+- 删除 UAST-2 kernel、测试、环境变量、workspace 和 dispatcher 改动。
+- 本地与远端恢复到实验前 UA2D；关键文件 SHA256 一致，远端 GPU 回到 `0%`。
+- `vllm_cscc` 工作区只保留实验前已有的 ALT-C LLMM1 相关改动。
+
+结论：UAST-2 在当前 gfx936/TRITON_ATTN/NHD cache 组合下淘汰，不继续投入结构或参数优化。
