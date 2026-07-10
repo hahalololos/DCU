@@ -1,0 +1,10 @@
+git clone -b v0.18.1 --depth 1 http://developer.sourcefind.cn/codes/OpenDAS/vllm_cscc.git
+
+cd vllm_cscc
+python setup.py bdist_wheel
+cd dist
+pip install vllm-*.whl --no-deps
+
+curl -f -C - -o testdata.tar.gz https://zzefile.scnet.cn:65011/efile/s/d/c2N5MTE1OTkxMDU1OQ==/a927e65672549b46
+mkdir -p ./testdata
+tar -xzf testdata.tar.gz -C ./testdata --strip-components=1

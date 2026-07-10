@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments and local environment files
+.venv/
+venv/
+env/
+*.env
+env.sh
+
+# Build outputs
+build/
+dist/
+*.egg-info/
+_skbuild/
+CMakeFiles/
+CMakeCache.txt
+cmake-build-*/
+
+# Native/compiled artifacts
+*.so
+*.o
+*.a
+*.dylib
+
+# Logs and runtime output
+*.log
+nohup.out
+
+# Local caches
+.cache/
+.codegraph/
+
+# Editors and OS files
+.DS_Store
+.idea/
+.vscode/
+*.swp
