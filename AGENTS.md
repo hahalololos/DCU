@@ -38,6 +38,8 @@ source env.sh
 
 ## 构建
 
+涉及构建时，先参阅根目录 `竞赛环境vllm增量编译guide.md`。该指南规定远端 `.venv + env.sh + 指定比赛 wheel` 的基线安装、CMake/Ninja 增量编译及验证流程；纯 Python/Triton 改动无需 CMake，已有 editable 安装时重启相关进程即可生效。注意：在已编译自定义扩展后，不要重复执行带 `VLLM_USE_PRECOMPILED=1` 的 editable 安装，以免 wheel 覆盖源码树中的 `.so`。
+
 仅 Python 改动可 editable install：
 
 ```bash
@@ -48,13 +50,15 @@ export VLLM_USE_PRECOMPILED=1
 python -m pip install -e ./vllm_cscc --no-build-isolation --no-deps
 ```
 
-涉及 `csrc/`、HIP/C++、CMake 或扩展时必须重建：
+涉及 `csrc/`、HIP/C++、CMake 或扩展时必须重建。首次建立基线、构建状态不可用或需要全量构建时执行：
 
 ```bash
 cd /public/home/xdzs2026_c203/haha
 source .venv/bin/activate && source env.sh
 ./build_vllm_wheel_install.sh
 ```
+
+已有成功的 CMake 基线后，日常局部 C++/HIP 改动可按上述指南选择对应扩展目标进行 Ninja 增量编译与安装；不得用增量构建绕过必要的全量重建或功能验证。
 
 构建后检查：
 
