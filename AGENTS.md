@@ -22,6 +22,7 @@ source .venv/bin/activate && source env.sh
 
   `.venv`、`vllm_cscc/`、`env.sh`、`.cache/` 均在此目录；`env.sh` 必须加载 DTK/HYHAL，并将 `vllm_cscc` 置于 `PYTHONPATH` 最前。
 
+- 访问 `127.0.0.1`/`localhost` 时须设置大小写 `NO_PROXY` 或使用 `curl --noproxy '*'`；若出现 502/503，先检查响应是否来自 Squid/代理，避免误判为 vLLM 故障。
 - 不得创建、重启、停止或删除 PRA26 容器。`scnet-docker` 不可达时，先用 `scnet-login` 检查 RUNNING 作业；若容器未启动、作业结束或疑似达到 4 小时限制，停止远端工作并请用户在平台手动处理。用户重启后，先刷新 `scnet-computer`/`scnet-docker` SSH 配置并验证连接。
 
 ## 比赛边界
@@ -53,6 +54,9 @@ python -m pip install -e ./vllm_cscc --no-build-isolation --no-deps
 
 - 4B：`/public/home/xdzs2026_c203/models/Qwen3.5-4B`
 - 27B：`/public/home/xdzs2026_c203/models/Qwen3.5-27B`
+- 4B 可作快速门禁；适配形状相关优化时须参考
+  `调研交付物/09-Qwen3.5-4B与27B配置对比.md` 中的 27B 层数和算子尺寸差异，赛方 27B
+  结果为最终依据。
 
 ```bash
 cd testdata
