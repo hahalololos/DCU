@@ -3,6 +3,28 @@
 仅记录 vLLM 源码改动、验证结果和结论；实验原始数据见远端
 `testdata/experiments/`，实施细节见 `docs/plans/`。
 
+## 2026-07-12
+
+### Qwen3.5 专用 UA2D 最终取舍
+
+- 完成无外部并发的 TILE32 4B 热态复测。相对
+  `UA2D-SPECIAL-BASE-HOT2_20260711_2214`：短档 request throughput 约 `-1.85%`、
+  P99 TTFT `-2.44%`、P99 TPOT `+0.27%`；中档分别约 `+4.65%/-6.34%/-0.15%`；
+  长档有效轮 request throughput 约 `+4.8%`、P99 TTFT约 `-6.9%`、P99 TPOT基本持平。
+  三档均 `10/10` 完成；短中档目录为
+  `UA2D-SPECIAL-CAND-SHORT-HOT1_20260712_0015`、
+  `UA2D-SPECIAL-CAND-MID-HOT4_20260712_0012`，长档目录为
+  `UA2D-SPECIAL-CAND-CLEANREPEAT_20260711_2343`。
+- 同一109条4B精度重放中，TILE32相对F0基线：hotpotqa `67.3853 -> 67.3853`、
+  gov_report `33.2009 -> 32.5359`（约 `-2.00%`）、retrieval `100 -> 100`、
+  aggregation `96.67 -> 96.67`。TILE64将gov_report改善至 `32.7807`（约 `-1.27%`），
+  但热点micro约 `49.74 ms`，慢于TILE32约 `44.8 ms`。
+- 用户明确选择吞吐优先并接受上述小幅局部精度回退，因此最终保留
+  `TILE_SIZE=32/BLOCK_M=32/warps=4/stages=1`。热点 `q=4096/kv=22258` 相对原
+  fastpath约 `52.0 ms` 的单kernel加速约 `14.1%`。最终源码恢复至提交
+  `882f326` 的已验证状态，远端定向Qwen3.5/27B测试 `5 passed`，本地与远端关键文件
+  SHA256一致。
+
 ## 2026-07-11
 
 ### LLMM1 形状过滤榜单实测
@@ -37,17 +59,111 @@
   `10/10`一致。使用同一109条数据、同一4B精度脚本副本完成严格A/B：F0为
   `hotpotqa=67.3853、gov_report=33.2009、retrieval=100、aggregation=96.67`；F1为
   `67.3853、32.8483、100、96.67`。gov_report相对下降 `1.0618%`，越过1%免扣阈值，
-  对应任务系数将为0.97、四类平均精度系数约0.9925；因此shape filter精度门禁失败，保持
-  默认关闭，不升级27B。当前转入UA2D fastpath off/on对照。
+  对应任务系数将为0.97、四类平均精度系数约0.9925；因此shape filter未通过本地精度门禁，
+  当时保持默认关闭且不升级27B；后续为验证榜单净收益由提交 `39c4654` 另行默认启用。
+- S1按形状拆分：仅将4B full-attention output projection `(M=2560,K=4096)` 恢复到
+  LLMM1，其余过滤规则不变；远端定向回归 `18 passed`。实验目录为
+  `testdata/experiments/GAIN4B-S1-ATTNOUT_20260711_1702`。
+- 相对完整 shape filter 的F1热基线，S1短档 output throughput `-3.36%`、P99 TPOT
+  `+4.41%`；长档分别 `-0.64%/+2.87%`。8-16K补热轮后 request throughput因输出更短
+  为 `+4.16%`，但 output throughput `-6.51%`、P99 TPOT `+3.35%`，TTFT基本不变。
+  该形状无性能收益，未进入完整精度测试，候选源码与测试已清理，本地和远端均恢复
+  已推送版本。
 
-### UA2D 清理与 27B 准备
+### 4B Profile 驱动优化
+
+- 暂停继续尝试 S2/S3 GEMM 形状，改为在当前提交 `39c4654` 上分离采集三档 prefill 与
+  稳态 decode；执行计划见 `docs/plans/qwen35_4b_profile_plan_20260711_1727.md`。
+- 已确认本地与远端关键源码 SHA256 一致；远端 Torch Profiler 可直接使用，DTK 另提供
+  未加入 `PATH` 的 `rocprof/rocprofv2`，可在确定 Top kernels 后采集硬件计数器。
+- 远端已有队友的 4B profiler 服务占用8001和45%显存，其 benchmark 进程长期无GPU活动
+  但仍未退出。按4B可共享测试规则尝试在8002启动本工作区同配置服务；第二个 EngineCore
+  在模型加载和重新编译后进入设备等待态，未产生基准数据。已仅停止本工作区8002进程，
+  队友服务保持不动，GPU显存恢复到原45%。队友释放后完成正式采集。
+- 无 profiler 热基线三档 output throughput 为 `70.52/50.43/30.49 tok/s`，P99 TPOT 为
+  `11.88/12.49/13.24 ms`，三档均10/10；中长档与历史热基线一致，短档偏差约 `-3.4%`。
+- Torch Profiler 使用同一代表输入的 `output=1/64` 分离 prefill 和63个稳定decode token。
+  UA2D 在短/中/长档 prefill 纯kernel时间占比为 `28.4%/37.9%/58.1%`，是随上下文增长的
+  最大单一热点。
+- 稳态decode纯kernel时间为 `10.77/11.10/12.25 ms/token`。当前允许形状的LLMM1占
+  `28.9%/28.1%/25.3%`，其他GEMM合计约 `46.0%/44.6%/40.3%`；UA3D占比随上下文从
+  `6.3%` 增至 `18.1%`。
+- rocprof确认：长上下文UA2D为 `224 VGPR/32KB LDS/L2 hit 97.3%`，LDS bank-conflict计数
+  约 `1.577e9`，不是HBM带宽瓶颈；UA3D为 `248 VGPR/L2 hit约1%`，受KV读取影响；LM head
+  LLMM1约 `1.278 ms`、L2 hit `3.6%`、单次读取约1213MiB，接近带宽受限。
+- 结论：下一源码优化优先做UA2D单kernel内部 full-prefix/diagonal 分段并降低LDS/VGPR压力；
+  第二优先级为UA3D segment/KV load。停止S2/S3盲目恢复形状。完整报告见
+  `调研交付物/qwen35_4b_profile_20260711.md`。
+
+### Qwen3.5 专用 UA2D 实现与 micro 初筛（21:35）
+
+- 在隔离分支 `perf/qwen35-specialized-ua2d` 新增独立
+  `kernel_qwen35_unified_attention_2d`，保留 paged KV、多序列映射和单 kernel 在线
+  softmax；KV 循环拆为无需逐元素 causal mask 的 full-prefix 与保留 mask 的
+  diagonal/partial 两段。实现提交为 `5bf55cb`。
+- 专用路径 guard 收紧为仅 gfx936、Q/K/V/output 全 BF16、head size 256、4 KV heads、
+  4B `(16,4,4)` 或 27B `(24,4,6)` causal prefill，且关闭 alibi、sinks、softcap、
+  qq-bias、mm-prefix、sliding-window 和 FP8；测试提交为 `882f326`。
+- 远端因 pytest 环境缺少 `tblib`，未修改共享虚拟环境；改为直接加载同一测试模块并调用
+  测试函数。4B/27B、scalar on/off、cache-block 边界、非整块 query、GQA=6 padding、
+  `4095/4096` 长 query 共 12 组全部通过，重复输出 bitwise 一致，specialized 与 generic
+  在 `atol=1.5e-2/rtol=1e-2` 内一致。
+- 最新 profile 代表形态 `4B q=4096/kv=22258`：当前正式 fastpath 基线两轮为
+  `52.392/51.956 ms`；专用 kernel 最优 `TILE=32/BLOCK_M=32/warps=4/stages=1` 为
+  `44.867/44.749 ms`，平均单 kernel 加速约 `14.1%`。`BLOCK_M=16` 与 8 warps 分别约
+  `99.61/94.58 ms`，均已淘汰。
+- 计划进行 4B 三档端到端 A/B 时，8001 被队友的 4B profiler 服务占用，配置包含
+  `max-num-batched-tokens=8192`、FP8 KV 和 45% 显存，不能作为本轮对照；此前同卡再启动
+  第二个 45% 服务会卡住，因此未干扰队友。待 GPU 释放后使用官方 4B 脚本完成正式门禁。
+- 21:38 检测到 GPU 短暂释放后尝试启动本工作区 baseline；模型已加载，但队友 profiler
+  服务在 KV cache 初始化期间重新占用 45% 显存，本工作区因 `No available memory for the
+  cache blocks` 自动退出。未停止或修改队友进程，远端源码已立即恢复为专用 kernel 候选。
+- 后续窗口完成原 UA2D fastpath 的 4B 热基线，实验目录为
+  `testdata/experiments/UA2D-SPECIAL-BASE-HOT2_20260711_2214`。短/中/长档均 10/10，output
+  throughput 为 `73.83/50.73/30.57 tok/s`，P99 TPOT 为
+  `11.80/12.46/13.19 ms`；输入/输出 token 分别为
+  `62196/2571、134349/1522、212553/1114`。首轮中档包含一次冷编译长尾，已排除并使用
+  同服务热轮作为正式基线。切换候选时队友 profiler 再次启动，候选三档等待资源释放。
+- 候选后续获得一次三档窗口，预热轮目录为
+  `testdata/experiments/UA2D-SPECIAL-CAND-WARM1_20260711_2244`，热轮目录为
+  `testdata/experiments/UA2D-SPECIAL-CAND-HOT2_20260711_2249`。热轮短/中/长 output 为
+  `73.68/44.78/26.57 tok/s`，中长档 P99 TPOT 异常升至约 `19.8 ms`，未通过门禁。
+- 系统化排查发现候选窗口附近队友 profiler 服务反复启动；随后在双方进程均退出时重启
+  候选，模型加载显存由正常约 `8.71 GiB` 变为 `17.43 GiB`，KV cache 可用显存为
+  `-1.91 GiB` 并自动退出，直接证明存在并发占用。由于专用 UA2D 不命中单 token decode，
+  热轮 TPOT 回退不能直接归因于该 kernel，候选数据视为受污染，等待独占窗口复测。
+- 逐样本比较 baseline/candidate 热轮：三档文本完全一致均为 `7/10`，输出长度一致分别为
+  `8/10、7/10、8/10`；候选中档逐样本 TTFT 多数下降约 `5%--8%`，说明 prefill 路径确有
+  收益，但 TILE32 改变累积顺序导致生成存在数值敏感性，后续还需结合精度门禁决定是否
+  保留 TILE32，或退回数值更保守的 TILE64 专用路径。
+- 两次尝试在 GPU 显示空闲后进行无并发复测，均在本工作区服务初始化或 benchmark warmup
+  期间被队友 profiler 服务重新占用；一次出现 KV cache 可用显存 `-1.91 GiB`，另一次
+  中档 warmup 长时间停在首请求。均已只停止本工作区进程，未产生有效结果。确认当前无法
+  通过短暂空闲窗口完成可靠 A/B，需要与队友协调独占测试时段。
+
+### 4B UA2D fastpath 贡献复核
+
+- PRA26新作业恢复后，将远端残留的临时 `envs.py` 同步为已推送提交 `39c4654`，在
+  LLMM1 shape filter 开启的当前提交口径下，仅设置
+  `VLLM_ROCM_QWEN_UA2D_FASTPATH=0`。共享模型读取阻塞后改用官方4B的容器本地同字节副本；
+  实验目录为 `testdata/experiments/GAIN4B-U0-UA2DOFF_20260711_1639`，三档均完成10/10。
+- UA2D off 的短/中/长档 output throughput 为 `65.05/19.57/12.87 tok/s`，request
+  throughput 为 `0.2475/0.1339/0.1173 req/s`，平均 TTFT 为
+  `0.877/5.640/7.032 s`，P99 TTFT 为 `1.187/25.743/7.720 s`。
+- 相对相同 LLMM1 配置的 UA2D on 热基线，fastpath 使短/中/长档 output throughput 分别
+  提升 `+12.20%/+158.56%/+136.26%`，request throughput 提升
+  `+14.68%/+148.36%/+132.86%`，平均 TTFT 降低 `47.37%/80.30%/69.57%`，P99 TTFT
+  降低 `43.47%/94.56%/70.35%`。P99 TPOT 仅变化 `-1.10%/-0.08%/+0.39%`，说明主要
+  收益来自 prefill，而非 decode。
+- 两组输入长度完全一致；逐样本文本一致 `7/10、8/10、7/10`，输出长度一致
+  `8/10、8/10、7/10`，因此 output tok/s 同时受生成长度影响，但 request throughput 与
+  TTFT 仍确认 UA2D fastpath 是中长档的决定性正收益。结论：保留当前 UA2D fastpath，
+  不再投入 fastpath off 路线；下一步继续拆分 LLMM1 过滤形状。
+
+### UA2D 清理
 
 - 固化 UA2D 最优参数并删除阶段 0 形态日志、宽泛 guard、调试开关和无效参数扫描代码，
   净减少约 264 行；本地 `py_compile`、`git diff --check` 通过。
-- 27B 定向矩阵收窄为保留的 B32 vector/scalar 路径；远端回归通过，无 NaN/Inf、
-  VM fault 或随机失败。
-- 新增执行计划 `docs/plans/qwen35_27b_gain_execution_plan_20260711_1250.md`：
-  在共享 GPU 空闲后依次完成 27B 基线、LLMM1 A/B、UA2D A/B 与 profile。
 
 ### GDN 双 GEMV 融合淘汰
 

@@ -1,0 +1,7 @@
+# Compute utilization and wave behavior.
+pmc : SQ_WAVES SQ_INSTS_VALU SQ_INSTS_SALU SQ_LDS_BANK_CONFLICT
+
+# The gfx936 counter blocks cannot collect all memory metrics in one pass.
+pmc : FETCH_SIZE
+pmc : WRITE_SIZE
+pmc : TCC_HIT_sum TCC_MISS_sum

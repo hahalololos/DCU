@@ -13,7 +13,8 @@
 
 - 本地仅阅读、编辑、Git；远端仅构建、运行、测试。测试前同步本地源码；远端临时改动必须立即同步回本地。
 - 远端经 `mcp-ssh` 的 `scnet-docker` 访问，工作目录为 `/public/home/xdzs2026_c203/haha`；`mcp-ssh` 有问题可修改本地 `./mcp-ssh/`。
-- 远端为共享 root 容器：不得全局安装本项目 vLLM；启动 vLLM 前检查 GPU、端口，不影响队友。4B 可共享测试。
+- 远端为共享 root 容器：不得全局安装本项目 vLLM；启动 vLLM 前检查 GPU、端口，不影响队友。
+- 可以先把4B模型复制到 `/tmp`。
 - 每次远端操作先执行：
 
 ```bash
@@ -51,7 +52,7 @@ python -m pip install -e ./vllm_cscc --no-build-isolation --no-deps
 
 ## 测试
 
-先做可重复的 4B 对照；仅在完成率、正确性、时延无回退且收益明显后，按需测 27B（共享存储启动约半小时，非必要不测）。
+先做可重复的 4B 对照；仅在完成率、正确性、时延无回退且收益明显后，按需测 27B（共享存储启动约半小时，非必要不测）。可以将4B模型复制到 `/tmp`。
 
 - 4B：`/public/home/xdzs2026_c203/models/Qwen3.5-4B`
 - 27B：`/public/home/xdzs2026_c203/models/Qwen3.5-27B`

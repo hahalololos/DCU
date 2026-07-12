@@ -7,6 +7,16 @@
         "serve",
         "--mcp"
       ]
+    },
+    "mcp-ssh": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "/home/haha/DCU/mcp-ssh/bin/mcp-ssh.js"
+      ],
+      "env": {
+        "MCP_SILENT": "true"
+      }
     }
   }
 }
