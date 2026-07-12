@@ -13,7 +13,7 @@
 - 只修改 `vllm_cscc` 源码与定向测试，不修改模型、比赛脚本、scheduler 或推理语义。
 - 本地只编辑和静态检查；GPU 定向测试仅在远端竞赛环境执行。
 - 保持 Qwen3.5 专用 UA2D 默认开启及 `TILE32/BLOCK_M32/warps4/stages1` 不变。
-- 外部设置旧变量时静默忽略，不新增兼容分支或告警。
+- 外部设置旧变量时通过独立的废弃变量集合静默忽略，不恢复运行时开关能力，也不产生告警。
 
 ---
 
@@ -79,8 +79,9 @@ git diff --check
 rg "VLLM_ROCM_QWEN_UA2D_SCALAR_BLOCK_TABLE|scalar_block_table_2d" vllm
 ```
 
-Expected: 前两条退出 `0`；生产代码中的 `rg` 无匹配并退出 `1`。测试文件只保留删除契约
-中的旧变量字符串。
+Expected: 前两条退出 `0`；旧变量不再出现在类型声明、环境变量注册表或 attention dispatch，
+只允许出现在 `envs.py` 的废弃变量集合及对应删除/兼容契约测试中；
+`scalar_block_table_2d` 无匹配。
 
 - [ ] **Step 6: 更新进度并提交**
 

@@ -12,10 +12,12 @@
   专用 Qwen3.5 UA2D 仍固定使用已验证的标量 block-table 地址计算；通用 UA2D 明确保持
   `SCALAR_BLOCK_TABLE=False`，计算行为、guard 和 `TILE32/BLOCK_M32/warps4/stages1`
   均未改变。
-- 新增环境变量注册表删除契约；修改前直接导入检查按预期失败，删除后通过。三份改动文件
-  `py_compile`、`git diff --check` 通过，生产代码无旧变量或 `scalar_block_table_2d` 残留。
+- 新增环境变量注册表删除契约；修改前直接导入检查按预期失败，删除后通过。代码审查发现
+  直接删除注册会令严格环境校验拒绝旧变量，随后将旧名称加入独立废弃变量集合：软校验无
+  warning、硬校验不抛异常，同时不恢复运行时开关能力。三份改动文件 `py_compile`、
+  `git diff --check` 通过，attention dispatch 无旧变量或 `scalar_block_table_2d` 残留。
   本地完整 pytest 仍受缺少 `tblib` 限制，GPU 定向回归待远端执行。
-- vLLM 源码提交：`515ec50`。
+- vLLM 源码提交：`515ec50`、`c274c6b`。
 
 ### Qwen3.5 专用 UA2D 最终取舍
 
