@@ -5,6 +5,18 @@
 
 ## 2026-07-12
 
+### Qwen3.5 UA2D 失效开关清理
+
+- 删除已不影响专用 kernel 执行路径的
+  `VLLM_ROCM_QWEN_UA2D_SCALAR_BLOCK_TABLE` 环境变量、dispatch 临时状态及真假测试参数化。
+  专用 Qwen3.5 UA2D 仍固定使用已验证的标量 block-table 地址计算；通用 UA2D 明确保持
+  `SCALAR_BLOCK_TABLE=False`，计算行为、guard 和 `TILE32/BLOCK_M32/warps4/stages1`
+  均未改变。
+- 新增环境变量注册表删除契约；修改前直接导入检查按预期失败，删除后通过。三份改动文件
+  `py_compile`、`git diff --check` 通过，生产代码无旧变量或 `scalar_block_table_2d` 残留。
+  本地完整 pytest 仍受缺少 `tblib` 限制，GPU 定向回归待远端执行。
+- vLLM 源码提交：`515ec50`。
+
 ### Qwen3.5 专用 UA2D 最终取舍
 
 - 完成无外部并发的 TILE32 4B 热态复测。相对

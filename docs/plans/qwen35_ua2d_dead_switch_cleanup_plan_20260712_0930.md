@@ -76,10 +76,11 @@ Run:
 cd /home/haha/DCU/vllm_cscc
 python3 -m py_compile vllm/envs.py vllm/v1/attention/ops/triton_unified_attention.py tests/kernels/attention/test_triton_unified_attention.py
 git diff --check
-rg "VLLM_ROCM_QWEN_UA2D_SCALAR_BLOCK_TABLE|scalar_block_table_2d" vllm tests
+rg "VLLM_ROCM_QWEN_UA2D_SCALAR_BLOCK_TABLE|scalar_block_table_2d" vllm
 ```
 
-Expected: 前两条退出 `0`；`rg` 无匹配并退出 `1`。
+Expected: 前两条退出 `0`；生产代码中的 `rg` 无匹配并退出 `1`。测试文件只保留删除契约
+中的旧变量字符串。
 
 - [ ] **Step 6: 更新进度并提交**
 
