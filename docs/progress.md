@@ -5,6 +5,27 @@
 
 ## 2026-07-13
 
+### 27B LLMM1 rows_per_block 形状调优淘汰
+
+- 以 `0adf049` 为生产基线，在同一常驻进程内对四个当前允许的 27B Decode GEMV
+  形状扫描 `rows_per_block=2/4/8/16`；每个后端预热 5 次，20 次调用一组、正反序交替
+  测量 7 轮。原始结果位于远端
+  `testdata/experiments/LLMM1-ROWS-27B_20260713_1710/results.txt`。
+- 相对当前 row4，row8 在 GDN qkvz `(16384,5120)`、attention qkv+gate
+  `(14336,5120)`、MLP gate-up `(34816,5120)` 的 median 仅改善
+  `1.71%/1.38%/3.36%`；GDN b/a `(96,5120)` 的最优仍为 row4，row8 反而回退
+  `15.00%`。row2 四形状均回退约 `5.3%--10.1%`，row16 回退约
+  `57.6%--63.1%`。
+- 所有 row2/4/8/16 输出均与 row4 bitwise 一致，P99 与 median 趋势一致。若忽略单形状
+  门禁并为前三个大形状选择 row8，按每 token `48/48/16/64` 次调用折算，四类 LLMM1
+  合计仅从 `34.836` 降至 `33.902 ms/token`，理论节省 `0.934 ms/token`，即该子集的
+  `2.68%`。
+- 三个候选形状均未达到单形状至少 `5%` 的 micro 门槛，且小形状存在明显回退，因此不修改
+  `vllm_cscc` 生产 dispatch、不进入 27B 端到端 A/B。保留
+  `testdata/profile_hotspots_4b.py llmm1_rows` 作为后续 kernel 结构变化后的复测工具。
+- 远端已确认 editable vLLM 指向本项目源码，安装 `tblib 3.2.2` 后相关定向 pytest
+  `13 passed`；本地 profile 脚本 `py_compile` 已通过。
+
 ### 27B UA2D Triton 编译参数候选淘汰
 
 - 以提交 `0adf049` 的 v2b/TILE32/BLOCK_M32/WARPS2 为基线，仅针对 27B
