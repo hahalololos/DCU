@@ -2,7 +2,7 @@
 set -u
 set -o pipefail
 
-MODEL_DIR="${MODEL_DIR:-../Qwen3.5-27B}"
+MODEL_DIR="${MODEL_DIR:-/root/models/Qwen3.5-27B}"
 
 DATASET="${1:-all}"
 NUM_PROMPTS="${2:-}"

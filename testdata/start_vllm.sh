@@ -2,7 +2,7 @@
 set -u
 set -o pipefail
 
-MODEL_DIR="${MODEL_DIR:-/public/home/xdzs2026_c203/models/Qwen3.5-27B}"
+MODEL_DIR="${MODEL_DIR:-/root/models/Qwen3.5-27B}"
 
 vllm serve "$MODEL_DIR" \
     --served-model-name Qwen3.5-27B \

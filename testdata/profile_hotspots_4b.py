@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Run isolated Qwen3.5-4B hotspot shapes for ROCm profiling."""
+"""Run isolated Qwen3.5-4B/27B hotspot shapes for ROCm profiling."""
 
 import argparse
 import math
+import os
 import time
 
 import torch
@@ -26,7 +27,7 @@ def run_attention(
     num_query_heads = 16 if model_size == "4b" else 24
     num_kv_heads = 4
     head_size = 256
-    block_size = 528
+    block_size = 528 if model_size == "4b" else 784
     num_blocks = math.ceil(context_len / block_size)
 
     query = torch.randn(
@@ -126,6 +127,23 @@ def run_attention(
             f"verify_equal={torch.equal(candidate, output)} "
             f"max_abs_diff={diff.max().item():.8f}"
         )
+    elif verify and mode == "ua2d":
+        candidate = output.clone()
+        previous = os.environ.get("VLLM_ROCM_QWEN_UA2D_EXPERIMENT")
+        os.environ["VLLM_ROCM_QWEN_UA2D_EXPERIMENT"] = "2"
+        try:
+            invoke()
+            torch.cuda.synchronize()
+        finally:
+            if previous is None:
+                os.environ.pop("VLLM_ROCM_QWEN_UA2D_EXPERIMENT", None)
+            else:
+                os.environ["VLLM_ROCM_QWEN_UA2D_EXPERIMENT"] = previous
+        diff = (candidate.float() - output.float()).abs()
+        print(
+            f"verify_equal={torch.equal(candidate, output)} "
+            f"max_abs_diff={diff.max().item():.8f}"
+        )
 
 
 def run_llmm1_lm_head(repeats: int) -> None:
@@ -155,10 +173,82 @@ def run_llmm1_lm_head(repeats: int) -> None:
     )
 
 
+LINEAR_SHAPES = {
+    "4b": (
+        ("gdn_qkvz", 12_288, 2_560),
+        ("gdn_ba", 64, 2_560),
+        ("mlp_gate_up", 18_432, 2_560),
+        ("mlp_down", 2_560, 9_216),
+        ("lm_head", 248_320, 2_560),
+    ),
+    "27b": (
+        ("gdn_qkvz", 16_384, 5_120),
+        ("gdn_ba", 96, 5_120),
+        ("attn_qkv_gate", 14_336, 5_120),
+        ("attn_out", 5_120, 6_144),
+        ("mlp_gate_up", 34_816, 5_120),
+        ("mlp_down", 5_120, 17_408),
+        ("lm_head", 248_320, 5_120),
+    ),
+}
+
+
+def _benchmark_cuda(fn, repeats: int) -> float:
+    for _ in range(3):
+        fn()
+    torch.cuda.synchronize()
+    start = time.perf_counter()
+    for _ in range(repeats):
+        fn()
+    torch.cuda.synchronize()
+    return (time.perf_counter() - start) * 1000 / repeats
+
+
+def run_linear_shapes(model_size: str, repeats: int) -> None:
+    torch.manual_seed(0)
+    device = torch.device("cuda")
+    for name, output_features, input_features in LINEAR_SHAPES[model_size]:
+        x = torch.rand(1, input_features, dtype=torch.bfloat16, device=device)
+        weight = torch.rand(
+            output_features,
+            input_features,
+            dtype=torch.bfloat16,
+            device=device,
+        )
+        linear_ms = _benchmark_cuda(
+            lambda: torch.nn.functional.linear(x, weight), repeats
+        )
+        llmm1_ms = None
+        # The current LLMM1 launch derives its thread count from K and cannot
+        # launch safely once the resulting block exceeds the HIP thread limit.
+        if input_features <= 8_192 and output_features % 4 == 0:
+            llmm1_ms = _benchmark_cuda(lambda: ops.LLMM1(weight, x, 4), repeats)
+        result = (
+            f"mode=linear model={model_size} name={name} "
+            f"m={output_features} n=1 k={input_features} "
+            f"linear_ms={linear_ms:.6f}"
+        )
+        if llmm1_ms is not None:
+            result += (
+                f" llmm1_ms={llmm1_ms:.6f} "
+                f"speedup={linear_ms / llmm1_ms:.4f}x"
+            )
+        print(result)
+        del x, weight
+        torch.cuda.empty_cache()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "mode", choices=("ua2d", "ua3d", "ua3d_generic", "llmm1_lm_head")
+        "mode",
+        choices=(
+            "ua2d",
+            "ua3d",
+            "ua3d_generic",
+            "llmm1_lm_head",
+            "linear_shapes",
+        ),
     )
     parser.add_argument("--context-len", type=int, default=22_258)
     parser.add_argument("--repeats", type=int, default=10)
@@ -167,7 +257,9 @@ def main() -> None:
     parser.add_argument("--verify", action="store_true")
     args = parser.parse_args()
 
-    if args.mode == "llmm1_lm_head":
+    if args.mode == "linear_shapes":
+        run_linear_shapes(args.model_size, args.repeats)
+    elif args.mode == "llmm1_lm_head":
         run_llmm1_lm_head(args.repeats)
     else:
         run_attention(

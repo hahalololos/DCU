@@ -5,6 +5,69 @@
 
 ## 2026-07-13
 
+### Top 20 冲刺首轮 27B 热点复核与本地模型副本
+
+- 参考早期 27B hipprof 报告确认：短档 GEMM 占约 `78.74%`，中档 GEMM/attention
+  分别约 `58.87%/35.58%`，长档 attention 占约 `61.87%`；结合当前版本已完成的
+  UA2D/UA3D 优化，先复核 Decode Linear 和当前 Attention micro。
+- 扩展 `testdata/profile_hotspots_4b.py`：修正 27B attention block size 为 `784`，并加入
+  4B/27B 实际 Linear 形状扫描。27B 上现有 LLMM1 shape filter 方向正确：GDN qkvz、
+  GDN b/a、full-attention qkv+gate、MLP gate-up 相对 `F.linear` 分别约
+  `1.38x/2.21x/1.53x/1.38x`；attention out 和 LM head 的 LLMM1 分别仅约
+  `0.72x/0.75x`，应继续回退 `F.linear`。
+- 未覆盖的 27B MLP down `(M=5120,N=1,K=17408)` 的 `F.linear` 基线约
+  `0.151 ms`。隔离 Triton dot 原型最佳约 `0.524 ms`，仅为基线 `0.287x`，按门禁淘汰，
+  未接入生产源码。
+- 当前 27B micro 中，UA3D 在 8K/16K/32K 约 `0.294/0.298/0.308 ms`，scalar
+  block-table 与通用路径 bitwise 一致；UA2D 分别约 `21.93/48.52/101.82 ms`，仍是长档
+  主热点。32K 下 UA2D 内置 variant 0/1/2/3 约 `106.07/105.37/101.77/106.07 ms`，当前
+  默认 v2b（variant 2）继续胜出约 `4%`。
+- 将共享存储 27B 模型 `/public/home/acoh0h1o0p/models/Qwen3.5-27B` 使用 rsync 复制至
+  容器本地 `/root/models/Qwen3.5-27B`：源模型约 `52G/25` 个文件，本地复制完成后同为
+  `52G/25` 个文件。用户明确表示无需等待 SHA256 校验；后续 27B 启动和吞吐测试默认使用
+  本地副本，`testdata/start_vllm.sh` 与 `run_throughput.sh` 已更新默认路径。
+
+### 27B UA2D v2b TILE64 候选门禁与淘汰
+
+- 在现有 v2b 算法上新增仅供实验的 27B TILE64 variant，将 `block_size=784` 的 full-tile
+  循环从每物理块24次降至12次。27B micro相对同轮TILE32在8K/16K/32K从约
+  `21.93/48.48/110.70 ms` 降至 `20.66/45.50/95.64 ms`，分别改善约
+  `5.8%/6.2%/13.6%`。
+- 27B GQA=6的两组partial-query/cache-block边界测试、variant名称和kernel选择测试通过，
+  直接加载测试模块执行结果为 `4 passed`；常规pytest仍受远端缺少`tblib`限制。
+- 使用本地27B副本完成中、长档10条正向和反向A/B。热态中档baseline/candidate的
+  request throughput约 `0.07048 -> 0.07104 req/s`（`+0.80%`），output throughput
+  `12.2850 -> 12.3260 tok/s`（`+0.33%`），P99 TPOT基本持平；未达到中档门槛。
+- 长档baseline两次稳定约 `0.06787/0.06790 req/s`、`8.6670/8.6706 tok/s`；候选为
+  `0.07395 req/s`（约`+8.9%`），但生成token由`1277`降至`1096`，使output throughput
+  降至`8.1051 tok/s`（约`-6.5%`）。输入token均为`212553`，P99 TPOT基本持平。
+- 结论：TILE64虽明显缩短prefill并提高request throughput，但改变数值归约顺序后生成轨迹
+  变化，且榜单output-throughput口径稳定回退；候选按门禁淘汰，实验variant、选择逻辑和
+  正式测试扩展已删除，默认v2b TILE32保持不变。实验数据保存在远端
+  `testdata/experiments/TOP20-UA2D-E2-27B`与`TOP20-UA2D-E4-27B`。
+
+### 27B UA2D v2b WARPS2 固化
+
+- 对当前v2b 32K形状采集rocprof：`arch_vgpr=256`、LDS `16384 B`、
+  `SQ_LDS_BANK_CONFLICT=1,759,305,952`、L2命中约`97%`，确认kernel受寄存器占用和LDS冲突
+  限制。保持TILE32、BLOCK_M32和全部计算顺序不变，仅针对27B `block_size=784` 将workgroup
+  从4 warps降至2 warps；4B和其他形状不变，原WARPS4保留为experiment 2回滚路径。
+- 27B micro中，WARPS4的8K/16K/32K约`21.89/48.47/101.77 ms`，WARPS2约
+  `18.39/40.83/86.58 ms`，分别改善约`16.0%/15.8%/14.9%`。三档WARPS2与WARPS4输出均
+  bitwise一致，max abs diff为`0`；GQA=6、`783/784/785`及partial-query边界直接测试
+  `4 passed`。
+- 使用本地27B副本完成三档10条端到端A/B。短档baseline/candidate output throughput
+  `16.3837 -> 16.4272 tok/s`（`+0.27%`），P99 TTFT `2098.92 -> 2029.12 ms`
+  （`-3.33%`）；中档热态baseline/candidate `12.2850 -> 12.4682 tok/s`（`+1.49%`），
+  P99 TTFT `8127.45 -> 7918.78 ms`（`-2.57%`）；长档`8.6670 -> 8.9573 tok/s`
+  （`+3.35%`），P99 TTFT `8019.58 -> 7487.38 ms`（`-6.64%`）。三档P99 TPOT基本持平。
+- 三档均`10/10`完成，输入token分别为`62196/134349/212553`，输出token分别为
+  `2573/1743/1277`，baseline/candidate逐档完全一致；输入长度、输出长度和逐样本文本均
+  `10/10`完全一致。因此将experiment 5（v2b-warps2）设为默认，experiment 2继续提供
+  WARPS4回滚。实验数据保存在远端`testdata/experiments/TOP20-UA2D-E5-27B`。
+- `/root/models/Qwen3.5-27B`本地副本使权重加载稳定约`9.98--11.87 s`，后续27B测试继续
+  使用本地路径。
+
 ### UA3D Decode Attention 分段与标量 block-table 初筛
 
 - 审计确认当前 Triton UA3D 已采用固定 16 段并行 softmax，并用第二个 kernel 合并局部
