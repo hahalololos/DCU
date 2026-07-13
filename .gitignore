@@ -43,3 +43,9 @@ nohup.out
 .idea/
 .vscode/
 *.swp
+
+# rankings
+docs/rankings/
+
+# temporary remote synchronization archives
+.tmp_sync/

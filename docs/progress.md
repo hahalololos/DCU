@@ -3,7 +3,145 @@
 仅记录 vLLM 源码改动、验证结果和结论；实验原始数据见远端
 `testdata/experiments/`，实施细节见 `docs/plans/`。
 
+## 2026-07-13
+
+### UA3D Decode Attention 分段与标量 block-table 初筛
+
+- 审计确认当前 Triton UA3D 已采用固定 16 段并行 softmax，并用第二个 kernel 合并局部
+  maximum、exp sum 和 accumulator；因此优化重点从“新增分段”调整为分段数适配及
+  Qwen3.5/gfx936 专用访存路径。
+- 扩展 `testdata/profile_hotspots_4b.py`，支持 4B/27B 精确 GQA 形状及可配置 segments。
+  4B 初筛结果：context=4096 时 segments=4/8/16/32 分别约
+  `0.2949/0.2929/0.2950/0.2971 ms`；context=8192 时 segments=4/8 分别约
+  `0.4210/0.2941 ms`；context=16384 时 segments=4/8/16 分别约
+  `0.8096/0.4232/0.2845 ms`。说明最佳段数随长度增加，16K 仍需要默认 16 段。
+- 实现严格限定于 gfx936、BF16、head size 256、Qwen3.5-4B/27B、无额外 bias/window 的
+  decode UA3D 标量 block-table 候选：每个 tile 标量计算 logical block，常规情况下只加载
+  一个物理 block id，仅跨 528/544/784 token cache block 边界时加载第二项；通用路径保持
+  原向量 div/mod 实现。新增 decode-only/模型形状 guard 单元测试。
+- 本地 `py_compile` 与 `git diff --check` 通过。远端扫描期间 `scnet-computer` 跳板失联，
+  且登录节点出现 SSH host key 变化提示；未自动接受新指纹。候选尚未完成 GPU 数值、
+  block 边界与端到端验证，当前不得视为胜出优化。
+- 按用户要求先行用于榜单提交，vLLM 源码提交 `99d5cc7` 已推送至 `origin/haha`。该提交
+  仍属于未完成 GPU 验证的实验候选；榜单结果返回后必须结合三档吞吐、SLA、精度扣分
+  决定保留或回滚。
+- 容器恢复后完成 GPU 验证。4B/27B 在 context=527/528/529 的 cache-block 边界及
+  8K/16K 长度下，专用路径与通用 UA3D 均 bitwise 一致，max abs diff 为 `0`。
+  context=32K 重复反向 A/B 中，4B 通用/候选稳定约 `0.456/0.303 ms`，27B 约
+  `0.461/0.301 ms`，UA3D 两-kernel总时间改善约 `33%--35%`；8K/16K 基本持平或有
+  `0.5%--1.3%` micro 噪声级回退。
+- 4B 长档端到端 baseline/candidate 均 `10/10` 完成，输入 token `212553`、输出 token
+  `1096` 完全一致。output throughput `31.82 -> 32.45 tok/s`（`+1.98%`），P99 TPOT
+  `13.21 -> 12.59 ms`（`-4.69%`），P99 TTFT `2086.88 -> 2088.49 ms`（基本持平）。
+  实验目录为 `UA3D-SCALAR-BASE-LONG_20260713_0954` 和
+  `UA3D-SCALAR-CAND-LONG_20260713_1001`。
+- 第7次榜单提交相对第6次：长/短/中档吞吐由 `12.08/16.84/14.97` 提升至
+  `12.24/16.96/15.05`，分别为 `+1.32%/+0.71%/+0.53%`；最终得分
+  `81.1202 -> 81.3964`（`+0.2762`），排名 `65 -> 61`，SLA 与精度扣分仍为0。
+  榜单和本地 A/B 同向，决定保留候选，并增加默认开启、可显式关闭的
+  `VLLM_ROCM_QWEN_UA3D_SCALAR_BLOCK_TABLE` 回滚开关。
+
+### GDN causal-conv + recurrent 融合候选门禁与淘汰
+
+- 实现隔离原型 `testdata/profile_gdn_fused_decode.py`：主 Triton kernel 直接从 raw QKV、
+  width=4 旧 conv state 和卷积权重计算 SiLU、Q/K L2Norm、gating 与 recurrent update，
+  第二个轻量 kernel 仅滑动 conv state。不能在原 recurrent grid 内同时更新 conv state，
+  否则不同 value tile 会并发读写同一 Q/K state，存在跨 program 竞争。
+- 4B/27B 精确形状、HV=32/48、BF16/FP32 recurrent state、有/无 conv bias 的输出、
+  recurrent state 和 conv state 均与原两-kernel路径 bitwise 一致。远端 pytest 收集受缺少
+  `tblib` 限制，改为直接加载同一测试模块调用 8 组参数化测试，结果 `8 passed`。
+- 原型 micro 相对 `causal_conv1d_update + packed recurrent` 两段总时间常见改善约
+  `29%--32%`。生产 wrapper 使用实际 BF16 recurrent state 时，BV16 的 4B/27B 改善约
+  `25.28%/23.72%`，BV32 改善约 `25.82%/28.27%`；同时确认默认
+  `mamba_ssm_cache_dtype=auto` 下 recurrent state 实际跟随 conv cache 为 BF16，而非最初
+  假设的 FP32。
+- 4B 正式热态基线为中档 `53.4238 tok/s、P99 TPOT 12.3121 ms`，长档
+  `31.8838 tok/s、13.0693 ms`。BV16 候选中档为 `53.1766 tok/s、12.4251 ms`
+  （吞吐 `-0.4627%`、P99 TPOT `+0.9176%`），长档为
+  `31.7834 tok/s、13.1628 ms`（`-0.3149%/+0.7152%`）；两档均 `10/10`，输入和
+  输出 token 总数与基线一致。
+- BV32 中档为 `45.8477 tok/s、P99 TPOT 12.5466 ms`（吞吐 `-14.1810%`、P99 TPOT
+  `+1.9041%`），且出现一次约 5 秒 TTFT 长尾；长档为
+  `31.6346 tok/s、13.3241 ms`（`-0.7817%/+1.9496%`），两档同样 `10/10`。
+  实验目录为 `GDN-FUSED-BF16-MID-HOT2_20260713_0114`、
+  `GDN-FUSED-BF16-LONG_20260713_0114`、`GDN-FUSED-BV32-MID_20260713_0125` 和
+  `GDN-FUSED-BV32-LONG_20260713_0125`。
+- 融合路径使启动时可用 KV cache 由约 `17.14 GiB` 增至 `17.47 GiB`，但 micro 收益未
+  传导到端到端，BV16/BV32 均未达到 TPOT `+1%` 门槛且存在稳定回退。已按方案完整删除
+  生产环境变量、导出、两个 kernel、wrapper、模型接入和新增正式测试，仅保留隔离 profile
+  工具与实验数据；本地 `vllm_cscc` 子仓库恢复干净并同步至 `scnet-docker-1`。
+
+### GDN prefill state-update 候选端到端门禁
+
+- 将 4B 模型从共享存储复制到新独占容器本地
+  `/root/models/Qwen3.5-4B`；源/目标均为 15 个文件，`config.json` 与全部
+  safetensors 逐文件 SHA256 一致。权重加载由共享目录约 `38.56 s` 降至本地目录约
+  `1.62 s`，后续 4B 服务统一优先使用该副本。
+- 在 `scnet-docker-1` 复现 gfx936 state-update 扫描：4B 的
+  `BV16/warps1/stages1` 中位数约 `0.5362 ms`，相对原配置集代表项
+  `BV64/warps4/stages2` 的 `0.6272 ms` 快约 `14.5%`；27B 扫描中
+  `BV16/warps1/stages1` 与 `BV32/warps2/stages1` 分别约 `0.6563/0.6686 ms`，均明显
+  快于原配置集代表项。4B/27B 的 `h`、`v_new` 对参考配置均 bitwise 一致，max abs diff
+  为 `0`。
+- 新容器候选 prefill-core 热态结果：4B T=8192/16384 中位数约
+  `3.003/5.975 ms`，27B T=8192 约 `3.866 ms`，与旧容器初筛方向一致。
+- 完成 4B 端到端严格 A/B，服务参数、数据顺序和请求参数一致；候选热态实验目录为
+  `GDN-CAND-MID-HOT2_20260713_0000`、`GDN-CAND-LONG_20260712_2352`，baseline 为
+  `GDN-BASE-MID-HOT2_20260713_0022`、`GDN-BASE-LONG_20260713_0015`。中档候选/基线
+  output throughput 均约 `53.42 tok/s`（精确变化 `-0.0061%`），P99 TTFT 改善
+  `0.12%`，P99 TPOT 回退 `0.16%`；长档 output throughput 仅改善 `0.063%`，P99 TTFT
+  改善 `0.30%`，P99 TPOT 回退 `0.06%`。
+- 两档均 `10/10` 完成，输入/输出 token 总数一致，逐样本文本与输出长度均 `10/10`
+  完全一致。首轮中档各自都出现一次相同位置的运行期编译长尾，因此以完成长档后再次执行
+  的双方 HOT2 作为正式中档对照。
+- 结论：单 state-update kernel 收益未传导到端到端，未达到方案要求的中档 `+2%` 门槛；
+  候选按门禁淘汰，不进行 27B 端到端测试。`chunk_delta_h.py` 已恢复 Git 基线，本地子仓库
+  工作树干净，并以 SHA256 `849765cb...b827e31` 同步远端。
+
 ## 2026-07-12
+
+### GDN G0 路径拆分与首轮采样
+
+- 审计 Qwen3.5 GDN 实际前向后确认：`mixed_qkvz` 已按连续的 `mixed_qkv + z`
+  输出，原先设想的 interleaved QKVZ 大重排并不存在；仅有 `ba.chunk(2)` 后两次很小的
+  contiguous copy。4B/27B、T=4096 的 layout micro 中位数均约 `0.102 ms`，按层数粗算
+  分别约 `2.46/4.91 ms` 每请求，未达到 5% 候选门槛，停止该方向。
+- 新增 `testdata/profile_gdn_4b_27b.py`，覆盖精确 4B/27B shape 的 layout、投影、
+  prefill conv/core、decode conv/core/pipeline，支持事件分位数、峰值显存与 Torch Profiler
+  trace；新增 `testdata/summarize_gpu_trace.py` 汇总 trace 的 GPU kernel 占比。工具本地
+  `py_compile` 通过，并已同步远端。
+- batch=1 decode 首轮结果：4B conv/core/pipeline 中位数约
+  `0.163/0.184/0.322 ms`；27B conv/core/pipeline 中位数约
+  `0.172/0.181/0.321 ms`。单层时延对 head 数不敏感，27B 的主要放大项是 GDN 层数翻倍。
+- 4B、T=4096 的 prefill core 单层中位数约 `1.546 ms`，24 层粗算约 `37.1 ms`。
+  Torch trace 中 `chunk_gated_delta_rule_fwd_kernel_h_blockdim64` 占 `40.86%`、
+  `chunk_fwd_kernel_o` 占 `26.59%`、`recompute_w_u_fwd_kernel` 占 `12.11%`、
+  solve-tril merge 占 `9.01%`，prefill chunk/state-update 已成为首要候选。
+- 27B 同形状 prefill core 单层中位数约 `2.095 ms`，48 层粗算约 `100.5 ms`；trace 中
+  state-update 占 `47.17%`、output 占 `20.36%`、recompute 占 `13.67%`、solve-tril merge
+  占 `9.86%`。4B/27B 交叉验证均指向 state-update 为第一热点，且 27B 优先级更高。
+- packed recurrent 当前固定 `BV32/warps1/stages3`；micro 工具已支持不改生产源码直接扫描
+  `BV16/32/64/128 × warps1/2/4 × stages1/2/3`；prefill state-update 也已加入
+  `BV16/32/64 × warps1/2/4 × stages1/2/3/4` 的隔离扫描入口。远端共享缓存写入曾令
+  冷编译长时间 D 状态，改用容器本地 `/tmp` Triton/TorchInductor cache 后完成 4B trace。
+- packed decode 扫描中，4B 最优 `BV128/warps2/stages1` 为 `0.1358 ms`，相对同轮
+  `BV32/warps1/stages3` 的 `0.1433 ms` 快约 `5.2%`；27B 最优
+  `BV128/warps2/stages3` 为 `0.1405 ms`，相对默认等价配置的 `0.1488 ms` 快约 `5.6%`。
+  两模型交叉验证均未达到 8% GDN 子路径门槛，暂列次优，不先改生产 dispatch。
+- prefill state-update 扫描中，4B 最优 `BV16/warps1/stages1` 为 `0.5070 ms`，相对现有
+  可选配置中最佳约 `0.6270 ms` 快约 `19.1%`；27B 最优 `BV32/warps2/stages1` 为
+  `0.6710 ms`，相对现有最佳约 `0.9355 ms` 快约 `28.3%`。已将两配置仅加入 gfx936 的
+  state-update autotune 候选集；其他平台配置集不变，所有形状仍由原 key 独立择优，计算
+  路径不变。
+- 缩放稳定输入后，4B 候选 `BV16/warps1/stages1` 与 27B 候选
+  `BV32/warps2/stages1` 相对 `BV32/warps2/stages2` 的 `h`、`v_new` 均 bitwise 一致，
+  max abs diff 为 `0`。新鲜 baseline/candidate prefill-core A/B：4B T=4096 基本持平
+  `1.586 -> 1.598 ms`，T=8192 改善约 `2.0%`（`3.052 -> 2.989 ms`），T=16384 改善约
+  `2.4%`（`6.126 -> 5.976 ms`）；27B T=4096 改善约 `10.1%`
+  （`2.088 -> 1.877 ms`），T=8192 改善约 `8.6%`（`4.222 -> 3.857 ms`）。
+- 候选源码已恢复并同步远端。准备进入 4B `16-32K` 端到端门禁时，检测到队友正在使用
+  端口 8001 和约 40% 显存运行 4B 吞吐，且其脚本结束会匹配停止 4B 服务；未并发启动或
+  影响队友进程，等待资源释放后再测。
 
 ### Qwen3.5 UA2D 失效开关清理
 

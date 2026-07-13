@@ -2,8 +2,8 @@
 set -u
 set -o pipefail
 
-export PYTHONPATH="/public/home/xdzs2026_c203/haha/vllm_cscc:${PYTHONPATH:-}"
-MODEL_DIR="${MODEL_DIR:-/public/home/xdzs2026_c203/models/Qwen3.5-4B}"
+export PYTHONPATH="/public/home/acoh0h1o0p/DCU/vllm_cscc:${PYTHONPATH:-}"
+MODEL_DIR="${MODEL_DIR:-/root/models/Qwen3.5-4B}"
 
 vllm serve "$MODEL_DIR" \
     --served-model-name Qwen3.5-4B \

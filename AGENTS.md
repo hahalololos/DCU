@@ -12,20 +12,36 @@
 ## 远端环境与容器
 
 - 本地仅阅读、编辑、Git；远端仅构建、运行、测试。测试前同步本地源码；远端临时改动必须立即同步回本地。
-- 远端经 `mcp-ssh` 的 `scnet-docker` 访问，工作目录为 `/public/home/xdzs2026_c203/haha`；`mcp-ssh` 有问题可修改本地 `./mcp-ssh/`。
-- 远端为共享 root 容器：不得全局安装本项目 vLLM；启动 vLLM 前检查 GPU、端口，不影响队友。
-- 可以先把4B模型复制到 `/tmp`。
+- 远端统一经 `mcp-ssh` 的 `scnet-docker-1` 访问，工作目录为
+  `/public/home/acoh0h1o0p/DCU`；不再使用旧目标 `scnet-docker` 和旧目录
+  `/public/home/xdzs2026_c203/haha`。`mcp-ssh` 有问题可修改本地 `./mcp-ssh/`。
+- 远端项目副本可能落后，且 `vllm_cscc` 的远端 Git 元数据可能不完整；以本地仓库源码和
+  提交历史为权威。每次构建、测试前先将本地相关源码和测试工具同步到远端，不依赖远端
+  `git status`、分支或提交记录判断版本。
+- `scnet-docker-1` 为本项目独占 root 容器，无需虚拟环境隔离，可以直接使用系统 Python、
+  全局安装或构建本项目 vLLM。首次使用或同步后仍须执行 `which python`、`which vllm` 和
+  `python -m pip show vllm`，确认实际命令、版本和源码位置；不得误用系统中其他 vLLM 副本。
+- 启动 vLLM 前仍需清理本项目遗留进程并检查 GPU、端口，避免同一任务的旧服务污染结果；
+  独占容器内无需等待或避让其他队友任务。
+- 可以先把4B模型复制到 `/root/`。
 - 每次远端操作先执行：
 
 ```bash
-cd /public/home/xdzs2026_c203/haha
-source .venv/bin/activate && source env.sh
+cd /public/home/acoh0h1o0p/DCU
+source /opt/dtk/env.sh
+source /opt/hyhal/env.sh
+export PYTHONPATH="$PWD/vllm_cscc:${PYTHONPATH:-}"
 ```
 
-  `.venv`、`vllm_cscc/`、`env.sh`、`.cache/` 均在此目录；`env.sh` 必须加载 DTK/HYHAL，并将 `vllm_cscc` 置于 `PYTHONPATH` 最前。
+  新容器没有旧项目的 `.venv/env.sh` 约定；不要再执行旧的虚拟环境激活命令。上述两个
+  `/opt` 环境脚本用于加载系统 DTK/HYHAL 运行库，并非项目环境隔离；缺少它们时 vendor
+  PyTorch 会因找不到 `libgalaxyhip.so.5` 而无法导入。
 
 - 访问 `127.0.0.1`/`localhost` 时须设置大小写 `NO_PROXY` 或使用 `curl --noproxy '*'`；若出现 502/503，先检查响应是否来自 Squid/代理，避免误判为 vLLM 故障。
-- 不得创建、重启、停止或删除 PRA26 容器。`scnet-docker` 不可达时，先用 `scnet-login` 检查 RUNNING 作业；若容器未启动、作业结束或疑似达到 4 小时限制，停止远端工作并请用户在平台手动处理。用户重启后，先刷新 `scnet-computer`/`scnet-docker` SSH 配置并验证连接。
+- 除非用户明确要求，不得创建、重启、停止或删除 PRA26 容器。`scnet-docker-1` 不可达时，
+  先用 `scnet-login` 检查 RUNNING 作业；若容器未启动、作业结束或疑似达到时限，停止远端
+  工作并请用户在平台手动处理。用户处理后，刷新 `scnet-computer`/`scnet-docker-1` SSH
+  配置并验证连接。
 
 ## 比赛边界
 
@@ -42,20 +58,27 @@ source .venv/bin/activate && source env.sh
 - 仅 Python 改动可执行：
 
 ```bash
-export VLLM_PRECOMPILED_WHEEL_LOCATION=/public/home/xdzs2026_c203/haha/vllm_cscc/dist/vllm-0.18.1+das.dtk2604-cp310-cp310-linux_x86_64.whl
+export VLLM_PRECOMPILED_WHEEL_LOCATION=/public/home/acoh0h1o0p/DCU/vllm_cscc/dist/vllm-0.18.1+das.dtk2604-cp310-cp310-linux_x86_64.whl
 export VLLM_USE_PRECOMPILED=1
 python -m pip install -e ./vllm_cscc --no-build-isolation --no-deps
 ```
 
+  执行前必须确认上述 wheel 文件确实存在。若新容器尚无可复用 wheel 或扩展，按构建指南
+  建立新基线，不得引用旧账号目录。
+
 - 涉及 `csrc/`、HIP/C++、CMake 或扩展必须重建；首次基线、构建状态不可用或需全量构建时执行 `./build_vllm_wheel_install.sh`。有成功 CMake 基线后，按指南进行对应 Ninja 增量构建；不得借此绕过必要全量构建或功能验证。
-- 构建后执行 `which python; which vllm; python -m pip show vllm`：前两者须在 `.venv`，editable location 须为 `.../vllm_cscc`。若 wheel 有扩展而源码树无 `.so`，`env.sh` 的源码优先级会导致 `No module named vllm._rocm_C`。
+- 构建后执行 `which python; which vllm; python -m pip show vllm`：允许使用系统路径，但
+  editable location 或实际导入路径必须指向 `/public/home/acoh0h1o0p/DCU/vllm_cscc`。
+  若 wheel 有扩展而源码树无 `.so`，`PYTHONPATH` 的源码优先级仍可能导致
+  `No module named vllm._rocm_C`。
 
 ## 测试
 
-先做可重复的 4B 对照；仅在完成率、正确性、时延无回退且收益明显后，按需测 27B（共享存储启动约半小时，非必要不测）。可以将4B模型复制到 `/tmp`。
+先做可重复的 4B 对照；仅在完成率、正确性、时延无回退且收益明显后，按需测 27B（共享存储启动约半小时，非必要不测）。4B 已完整复制到容器本地 `/root/models/Qwen3.5-4B`，后续启动优先使用该副本以缩短加载时间；共享存储路径仅作为复制源和回退。
 
-- 4B：`/public/home/xdzs2026_c203/models/Qwen3.5-4B`
-- 27B：`/public/home/xdzs2026_c203/models/Qwen3.5-27B`
+- 4B（首选）：`/root/models/Qwen3.5-4B`
+- 4B（共享存储回退）：`/public/home/acoh0h1o0p/models/Qwen3.5-4B`
+- 27B：`/public/home/acoh0h1o0p/models/Qwen3.5-27B`
 - 4B 可作快速门禁；适配形状相关优化时须参考
   `调研交付物/09-Qwen3.5-4B与27B配置对比.md` 中的 27B 层数和算子尺寸差异，赛方 27B
   结果为最终依据。
