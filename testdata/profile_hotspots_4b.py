@@ -4,6 +4,7 @@
 import argparse
 import math
 import os
+import statistics
 import time
 
 import torch
@@ -19,6 +20,7 @@ def run_attention(
     num_segments: int,
     model_size: str,
     verify: bool,
+    ua2d_experiment: int,
 ) -> None:
     torch.manual_seed(0)
     ua._is_qwen35_ua3d_scalar_block_candidate = lambda **_: mode == "ua3d"
@@ -29,6 +31,8 @@ def run_attention(
     head_size = 256
     block_size = 528 if model_size == "4b" else 784
     num_blocks = math.ceil(context_len / block_size)
+    if mode == "ua2d":
+        os.environ["VLLM_ROCM_QWEN_UA2D_EXPERIMENT"] = str(ua2d_experiment)
 
     query = torch.randn(
         query_len,
@@ -130,7 +134,7 @@ def run_attention(
     elif verify and mode == "ua2d":
         candidate = output.clone()
         previous = os.environ.get("VLLM_ROCM_QWEN_UA2D_EXPERIMENT")
-        os.environ["VLLM_ROCM_QWEN_UA2D_EXPERIMENT"] = "2"
+        os.environ["VLLM_ROCM_QWEN_UA2D_EXPERIMENT"] = "5"
         try:
             invoke()
             torch.cuda.synchronize()
@@ -192,6 +196,14 @@ LINEAR_SHAPES = {
     ),
 }
 
+LLMM1_ROWS_SHAPES_27B = (
+    ("gdn_qkvz", 16_384, 5_120, 48),
+    ("gdn_ba", 96, 5_120, 48),
+    ("attn_qkv_gate", 14_336, 5_120, 16),
+    ("mlp_gate_up", 34_816, 5_120, 64),
+)
+LLMM1_ROWS_PER_BLOCK = (2, 4, 8, 16)
+
 
 def _benchmark_cuda(fn, repeats: int) -> float:
     for _ in range(3):
@@ -202,6 +214,88 @@ def _benchmark_cuda(fn, repeats: int) -> float:
         fn()
     torch.cuda.synchronize()
     return (time.perf_counter() - start) * 1000 / repeats
+
+
+def _time_cuda(fn, repeats: int) -> float:
+    start = time.perf_counter()
+    for _ in range(repeats):
+        fn()
+    torch.cuda.synchronize()
+    return (time.perf_counter() - start) * 1000 / repeats
+
+
+def _p99(values: list[float]) -> float:
+    return sorted(values)[math.ceil(len(values) * 0.99) - 1]
+
+
+def run_llmm1_rows(repeats: int, rounds: int) -> None:
+    torch.manual_seed(0)
+    device = torch.device("cuda")
+    for name, output_features, input_features, calls_per_token in (
+        LLMM1_ROWS_SHAPES_27B
+    ):
+        x = torch.rand(1, input_features, dtype=torch.bfloat16, device=device)
+        weight = torch.rand(
+            output_features,
+            input_features,
+            dtype=torch.bfloat16,
+            device=device,
+        )
+        runners = {
+            "linear": lambda: torch.nn.functional.linear(x, weight),
+            **{
+                f"row{rows}": lambda rows=rows: ops.LLMM1(weight, x, rows)
+                for rows in LLMM1_ROWS_PER_BLOCK
+            },
+        }
+
+        for runner in runners.values():
+            for _ in range(5):
+                runner()
+        torch.cuda.synchronize()
+
+        outputs = {backend: runner() for backend, runner in runners.items()}
+        torch.cuda.synchronize()
+        row4_output = outputs["row4"]
+        linear_output = outputs["linear"]
+
+        measurements = {backend: [] for backend in runners}
+        backend_order = list(runners)
+        for round_idx in range(rounds):
+            order = backend_order if round_idx % 2 == 0 else backend_order[::-1]
+            for backend in order:
+                measurements[backend].append(_time_cuda(runners[backend], repeats))
+
+        medians = {
+            backend: statistics.median(values)
+            for backend, values in measurements.items()
+        }
+        row4_median = medians["row4"]
+        best_rows = min(LLMM1_ROWS_PER_BLOCK, key=lambda rows: medians[f"row{rows}"])
+        best_median = medians[f"row{best_rows}"]
+        saved_ms_per_call = row4_median - best_median
+        print(
+            f"mode=llmm1_rows model=27b name={name} m={output_features} n=1 "
+            f"k={input_features} calls_per_token={calls_per_token} "
+            f"best_row={best_rows} saved_ms_per_call={saved_ms_per_call:.6f} "
+            f"saved_ms_per_token={saved_ms_per_call * calls_per_token:.6f}"
+        )
+        for backend in runners:
+            output = outputs[backend]
+            diff = (output.float() - linear_output.float()).abs()
+            bitwise_row4 = torch.equal(output, row4_output)
+            speedup_vs_row4 = row4_median / medians[backend]
+            print(
+                f"backend={backend} median_ms={medians[backend]:.6f} "
+                f"p99_ms={_p99(measurements[backend]):.6f} "
+                f"speedup_vs_row4={speedup_vs_row4:.6f} "
+                f"bitwise_row4={bitwise_row4} "
+                f"max_abs_diff_vs_linear={diff.max().item():.8f} "
+                f"finite={torch.isfinite(output).all().item()}"
+            )
+
+        del x, weight, outputs
+        torch.cuda.empty_cache()
 
 
 def run_linear_shapes(model_size: str, repeats: int) -> None:
@@ -247,18 +341,23 @@ def main() -> None:
             "ua3d",
             "ua3d_generic",
             "llmm1_lm_head",
+            "llmm1_rows",
             "linear_shapes",
         ),
     )
     parser.add_argument("--context-len", type=int, default=22_258)
     parser.add_argument("--repeats", type=int, default=10)
+    parser.add_argument("--rounds", type=int, default=5)
     parser.add_argument("--segments", type=int, default=16)
     parser.add_argument("--model-size", choices=("4b", "27b"), default="4b")
     parser.add_argument("--verify", action="store_true")
+    parser.add_argument("--ua2d-experiment", type=int, default=5)
     args = parser.parse_args()
 
     if args.mode == "linear_shapes":
         run_linear_shapes(args.model_size, args.repeats)
+    elif args.mode == "llmm1_rows":
+        run_llmm1_rows(args.repeats, args.rounds)
     elif args.mode == "llmm1_lm_head":
         run_llmm1_lm_head(args.repeats)
     else:
@@ -269,6 +368,7 @@ def main() -> None:
             args.segments,
             args.model_size,
             args.verify,
+            args.ua2d_experiment,
         )
 
 

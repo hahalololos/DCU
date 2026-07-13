@@ -5,6 +5,27 @@
 
 ## 2026-07-13
 
+### 27B UA2D Triton 编译参数候选淘汰
+
+- 以提交 `0adf049` 的 v2b/TILE32/BLOCK_M32/WARPS2 为基线，仅针对 27B
+  `block_size=784` 扫描 AMD Triton 编译参数：`waves_per_eu=1/2/4`，以及叠加
+  `matrix_instr_nonkdim=16,kpack=2` 的组合；实验编号为 6--11，默认 experiment 5
+  在整个测试期间保持不变。
+- 27B 合成 UA2D 在 8K/16K/32K 的 experiment 5 基线为
+  `18.4355/40.8380/86.4326 ms`。仅 `waves_per_eu=1` 的 experiment 6 为
+  `18.3481/40.8298/86.4340 ms`，相对改善约 `0.47%/0.02%/0%`，输出与基线
+  bitwise 一致，但未达到 5% micro 门槛。
+- `waves_per_eu=2 + matrix_instr_nonkdim=16 + kpack=2` 的 experiment 10 为
+  `18.1329/40.3133/85.7508 ms`，改善约 `1.64%/1.28%/0.79%`，同时相对 experiment 5
+  出现最大绝对差 `2.44e-4--4.88e-4`，速度和数值均未通过门禁。
+- `waves_per_eu=2` 单独使用稳定回退约 `1.9%--3.4%`；`waves_per_eu=4` 及其 MFMA
+  组合回退约 `61%--117%`。因此没有候选进入 27B 服务端到端测试，实验 6--11 的生产
+  dispatch、名称和测试已全部删除，vLLM 源码恢复到 `0adf049` 的已验证状态。
+- 保留 `testdata/profile_hotspots_4b.py` 的 `--ua2d-experiment` 参数，并将 `--verify`
+  对照更新为当前 experiment 5，便于后续复现实验；本地 `py_compile`、轻量契约测试和
+  `git diff --check` 通过。完整实验计划见
+  `docs/plans/qwen35_27b_ua2d_compiler_tuning_plan_20260713_1629.md`。
+
 ### Top 20 冲刺首轮 27B 热点复核与本地模型副本
 
 - 参考早期 27B hipprof 报告确认：短档 GEMM 占约 `78.74%`，中档 GEMM/attention
