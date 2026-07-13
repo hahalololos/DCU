@@ -1,10 +1,11 @@
 # AGENTS.md
 
-赛题文档：`智能计算创新设计赛-基于国产加速卡的千问大模型推理服务优化-技术方案.md`。
+必读赛题文档：`智能计算创新设计赛-基于国产加速卡的千问大模型推理服务优化-技术方案.md`。
 
 ## 文档与仓库
 
-- 文档尽量中文；计划写入 `docs/plans/`（文件名含时间戳），调研写入 `调研交付物/`。
+- 文档尽量中文。
+- 计划写入 `docs/plans/`（文件名含时间戳），调研写入 `调研交付物/`。
 - 每次 vLLM 源码优化及测试结果，按时间戳简记至 `docs/progress.md`。
 - `docs/rankings/`有队伍性能排名，目标前20名。
 - `DCU/`、`vllm_cscc/`、`mcp-ssh/` 是独立 Git 仓库，各自维护远端与提交历史。
@@ -13,17 +14,13 @@
 
 - 本地仅阅读、编辑、Git；远端仅构建、运行、测试。测试前同步本地源码；远端临时改动必须立即同步回本地。
 - 远端统一经 `mcp-ssh` 的 `scnet-docker-1` 访问，工作目录为
-  `/public/home/acoh0h1o0p/DCU`；不再使用旧目标 `scnet-docker` 和旧目录
-  `/public/home/xdzs2026_c203/haha`。`mcp-ssh` 有问题可修改本地 `./mcp-ssh/`。
-- 远端项目副本可能落后，且 `vllm_cscc` 的远端 Git 元数据可能不完整；以本地仓库源码和
-  提交历史为权威。每次构建、测试前先将本地相关源码和测试工具同步到远端，不依赖远端
+  `/public/home/acoh0h1o0p/DCU`。
+- 以本地仓库源码和提交历史为权威。每次构建、测试前先将本地相关源码和测试工具同步到远端，不依赖远端
   `git status`、分支或提交记录判断版本。
 - `scnet-docker-1` 为本项目独占 root 容器，无需虚拟环境隔离，可以直接使用系统 Python、
   全局安装或构建本项目 vLLM。首次使用或同步后仍须执行 `which python`、`which vllm` 和
   `python -m pip show vllm`，确认实际命令、版本和源码位置；不得误用系统中其他 vLLM 副本。
-- 启动 vLLM 前仍需清理本项目遗留进程并检查 GPU、端口，避免同一任务的旧服务污染结果；
-  独占容器内无需等待或避让其他队友任务。
-- 可以先把4B模型复制到 `/root/`。
+- 启动 vLLM 前需清理本项目遗留进程并检查 GPU、端口，避免同一任务的旧服务污染结果。
 - 每次远端操作先执行：
 
 ```bash
@@ -32,15 +29,13 @@ source /opt/dtk/env.sh
 source /opt/hyhal/env.sh
 export PYTHONPATH="$PWD/vllm_cscc:${PYTHONPATH:-}"
 ```
-
-  新容器没有旧项目的 `.venv/env.sh` 约定；不要再执行旧的虚拟环境激活命令。上述两个
-  `/opt` 环境脚本用于加载系统 DTK/HYHAL 运行库，并非项目环境隔离；缺少它们时 vendor
+  上述两个 `/opt` 环境脚本用于加载系统 DTK/HYHAL 运行库，缺少它们时 vendor
   PyTorch 会因找不到 `libgalaxyhip.so.5` 而无法导入。
 
 - 访问 `127.0.0.1`/`localhost` 时须设置大小写 `NO_PROXY` 或使用 `curl --noproxy '*'`；若出现 502/503，先检查响应是否来自 Squid/代理，避免误判为 vLLM 故障。
 - 除非用户明确要求，不得创建、重启、停止或删除 PRA26 容器。`scnet-docker-1` 不可达时，
-  先用 `scnet-login` 检查 RUNNING 作业；若容器未启动、作业结束或疑似达到时限，停止远端
-  工作并请用户在平台手动处理。用户处理后，刷新 `scnet-computer`/`scnet-docker-1` SSH
+  先用 `scnet-login-1` 检查 `squeue` ；若容器未启动、作业结束或疑似达到时限，停止远端
+  工作并请用户在平台手动处理。用户处理后，刷新 `scnet-computer-1`/`scnet-docker-1` SSH
   配置并验证连接。
 
 ## 比赛边界
@@ -74,14 +69,12 @@ python -m pip install -e ./vllm_cscc --no-build-isolation --no-deps
 
 ## 测试
 
-先做可重复的 4B 对照；仅在完成率、正确性、时延无回退且收益明显后，按需测 27B（共享存储启动约半小时，非必要不测）。4B 已完整复制到容器本地 `/root/models/Qwen3.5-4B`，后续启动优先使用该副本以缩短加载时间；共享存储路径仅作为复制源和回退。
+4B、27B 已完整复制到容器本地 `/root/models/`，后续启动优先使用该副本以缩短加载时间；共享存储路径仅作为复制源和回退。
 
 - 4B（首选）：`/root/models/Qwen3.5-4B`
 - 4B（共享存储回退）：`/public/home/acoh0h1o0p/models/Qwen3.5-4B`
-- 27B：`/public/home/acoh0h1o0p/models/Qwen3.5-27B`
-- 4B 可作快速门禁；适配形状相关优化时须参考
-  `调研交付物/09-Qwen3.5-4B与27B配置对比.md` 中的 27B 层数和算子尺寸差异，赛方 27B
-  结果为最终依据。
+- 27B（首选）：`/root/models/Qwen3.5-27B`
+- 27B（共享存储回退）：`/public/home/acoh0h1o0p/models/Qwen3.5-27B`
 
 ```bash
 cd testdata
