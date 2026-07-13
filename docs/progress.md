@@ -538,3 +538,34 @@
   retrieval_multi_point `100.00`、aggregation_keyword_aggregation `100.00`。
 - 长档收益较小；未继续重写 MLP down GEMV，因为现有 Tensile 有效带宽已接近专用
   kernel，比赛剩余时间内获得显著端到端收益的成功率较低。
+
+## 2026-07-14
+
+### Qwen3.5-27B gfx936 专用 GEMV 第二阶段（02:00）
+
+- 基于 `vllm_cscc@1290f03` 将 `LLMM1Gfx936` 扩展到固定
+  `K=5120/N=1/M={14336,16384,34816}`，保留 V1/V2，并新增 activation LDS 复用的
+  V3（单 wave/行）和 V4（双 wave/行）。三随机种子、七轮 micro 均由 V4 胜出：GDN
+  qkvz 相对 LLMM1 约快 `24.7%`，Attention qkv+gate 约快 `25.3%`，gate-up 相对原 V2
+  再快约 `5%`。
+- 将 `VLLM_ROCM_GFX936_SPECIALIZED_GEMV` 固化为三态整数：`0` 全部关闭，`1` 仅原
+  gate-up V2（精确生产基线），`2` 三形状 V4（默认）；新增环境变量说明和 dispatch
+  回归。远端增量构建 `_rocm_C` 成功，最终定向测试 `34 passed`，editable import 指向
+  `/public/home/acoh0h1o0p/DCU/vllm_cscc`。
+- 首轮参考候选使用了旧远端启动口径，日志解析为 `max_seq_len=262144`，结果仅保存在
+  `testdata/experiments/GEMV-PH2-MODE2_20260714_0058`，不作为正式 A/B。同步本地权威
+  脚本后，两组均锁定 `--max-model-len 32768`，正式目录分别为
+  `GEMV-PH2-MODE1_20260714_0115` 与 `GEMV-PH2-MODE2-LOCKED_20260714_0128`。
+- 正式模式 1 -> 模式 2 三档结果：4--8K output `17.4710 -> 18.4950 tok/s`
+  （`+5.86%`）、P99 TPOT `50.998 -> 47.832 ms`；8--16K output
+  `13.0807 -> 13.8643 tok/s`（`+5.99%`）、P99 TPOT `51.900 -> 48.732 ms`；
+  16--32K output `9.0622 -> 9.2999 tok/s`（`+2.62%`）、P99 TPOT
+  `52.932 -> 49.769 ms`。三档均 `10/10`，TTFT 基本不变。按历史无精度扣分榜单反解
+  官方基线后，预计吞吐得分净增约 `+2.10`，超过 `+0.30` 门槛。
+- 输出文本一致率为 `7/10、6/10、8/10`，因此完成完整精度门禁。模式 2 得分为
+  HotpotQA `77.96`、GovReport `33.38`、retrieval `100`、aggregation `100`；相对模式 1
+  已验证基线 `77.96/33.51/100/100`，GovReport 相对下降约 `0.39%`，四类精度系数均为
+  `1.00`。精度输出固化于候选实验目录的 `accuracy/`。
+- 三形状、随机种子 `0/1/17` 的 `torch.randn` 算子门禁全部有限且重复 bitwise 确定；
+  相对 F.linear 在 `rtol=1e-2/atol=1.5e-2` 下均为 `0` 个不匹配元素。最大绝对差可达
+  `0.5`，但仅出现在大幅值 BF16 元素，全部满足相对误差门限。最终保留模式 2 默认路径。
