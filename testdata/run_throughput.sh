@@ -3,6 +3,7 @@ set -u
 set -o pipefail
 
 MODEL_DIR="${MODEL_DIR:-/root/models/Qwen3.5-27B}"
+RESULT_ROOT="${RESULT_ROOT:-./test}"
 
 DATASET="${1:-all}"
 NUM_PROMPTS="${2:-}"
@@ -44,18 +45,18 @@ run_one() {
 
 case "$DATASET" in
     all)
-        run_one "4-8K" "./4-8K_throughput.jsonl" "./test/4-8K_throughput"
-        run_one "8-16K" "./8-16K_throughput.jsonl" "./test/8-16K_throughput"
-        run_one "16-32K" "./16-32K_throughput.jsonl" "./test/16-32K_throughput"
+        run_one "4-8K" "./4-8K_throughput.jsonl" "$RESULT_ROOT/4-8K_throughput"
+        run_one "8-16K" "./8-16K_throughput.jsonl" "$RESULT_ROOT/8-16K_throughput"
+        run_one "16-32K" "./16-32K_throughput.jsonl" "$RESULT_ROOT/16-32K_throughput"
         ;;
     4-8K)
-        run_one "4-8K" "./4-8K_throughput.jsonl" "./test/4-8K_throughput"
+        run_one "4-8K" "./4-8K_throughput.jsonl" "$RESULT_ROOT/4-8K_throughput"
         ;;
     8-16K)
-        run_one "8-16K" "./8-16K_throughput.jsonl" "./test/8-16K_throughput"
+        run_one "8-16K" "./8-16K_throughput.jsonl" "$RESULT_ROOT/8-16K_throughput"
         ;;
     16-32K)
-        run_one "16-32K" "./16-32K_throughput.jsonl" "./test/16-32K_throughput"
+        run_one "16-32K" "./16-32K_throughput.jsonl" "$RESULT_ROOT/16-32K_throughput"
         ;;
     *)
         echo "usage: $0 [all|4-8K|8-16K|16-32K] [num_prompts]"
@@ -65,4 +66,4 @@ esac
 
 echo
 echo "===== result files ====="
-find ./test -name result.json -type f -print
+find "$RESULT_ROOT" -name result.json -type f -print

@@ -5,6 +5,33 @@
 
 ## 2026-07-13
 
+### Qwen3.5-27B 三档全链路 Profile 与优化优先级
+
+- 以生产提交 `0adf049` 完成 27B 三档各 10 条热基线：4–8K/8–16K/16–32K 的
+  output throughput 分别为 `16.4348/12.9019/8.9538 tok/s`，P99 TTFT 为
+  `2030.27/4815.13/7491.73 ms`，P99 TPOT 为 `54.61/55.51/56.56 ms`；三档均
+  `10/10` 完成、0 失败。中档首轮受冷编译污染，正式值取两次热态中位数，两次偏差
+  仅 `0.024%`。
+- 从每档选择输入长度 P50/P90 样本，以独立服务采集两轮 `output=1/65` 配对 trace，
+  共 24 份。所有配对输入长度和生成前缀一致，输出严格为 1/65 token；最大轮间波动为
+  Prefill `0.216%`、Decode `0.210%`。同进程多轮复用 ROCm Torch Profiler 曾在第 4 次
+  start/stop 触发 HSA VM fault，改为每个样本独立服务后稳定完成。
+- 三档 Prefill 的 GEMM/UA2D 占比分别为 `67.15%/17.17%`、`56.39%/30.02%`、
+  `49.90%/38.04%`；稳定 Decode GEMM 约 `49.98--50.00 ms/token`。按比赛
+  `20%/50%/30%` 权重，Decode GEMM、UA2D、GDN、UA3D、GPU idle gap 的端到端占比
+  约为 `62.57%/10.34%/3.64%/2.69%/2.36%`。
+- Decode 精确热点为 LLMM1 `34.333 ms/token、176 次/token` 和其他
+  `F.linear`/Tensile `14.642 ms/token、129 次/token`。无计数器 micro 表明 LLMM1
+  MLP gate-up 64 次累计约 `23.28 ms/token`，下一步优先做其 kernel 结构优化；随后处理
+  MLP down 与 LM head。
+- 完成 Top 3 rocprof：UA2D 为 `256 VGPR/16 KiB LDS`，LDS bank conflict 约
+  `9.88e8`；UA3D 主核为 `252 VGPR/16.5 KiB LDS`，L2 hit 约 `1.37%`；LLMM1 MLP
+  gate-up L2 hit 约 `17.87%`。风险调整后顺序为 Decode GEMM、UA2D LDS/VGPR 结构、
+  UA3D KV load/segments；GDN 与 launch gap 暂缓，UA3D merge 仅约 `0.082 ms/token`。
+- 完整报告见 `调研交付物/qwen35_27b_profile_20260713.md`；本地小型数据位于
+  `testdata/profile_results/qwen35_27b_20260713/`，远端原始 trace 与 rocprof 位于
+  `/root/profile27b/`。本轮未修改 `vllm_cscc` 生产源码。
+
 ### 27B LLMM1 rows_per_block 形状调优淘汰
 
 - 以 `0adf049` 为生产基线，在同一常驻进程内对四个当前允许的 27B Decode GEMV

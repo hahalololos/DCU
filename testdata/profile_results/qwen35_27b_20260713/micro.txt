@@ -1,0 +1,14 @@
+UA2D
+mode=ua2d model=27b context=22294 segments=16 repeats=10 average_ms=57.460833
+verify_equal=True max_abs_diff=0.00000000
+UA3D
+mode=ua3d model=27b context=22294 segments=16 repeats=100 average_ms=0.290737
+verify_equal=True max_abs_diff=0.00000000
+LINEAR
+mode=linear model=27b name=gdn_qkvz m=16384 n=1 k=5120 linear_ms=0.242569 llmm1_ms=0.177096 speedup=1.3697x
+mode=linear model=27b name=gdn_ba m=96 n=1 k=5120 linear_ms=0.024753 llmm1_ms=0.012632 speedup=1.9595x
+mode=linear model=27b name=attn_qkv_gate m=14336 n=1 k=5120 linear_ms=0.236257 llmm1_ms=0.156059 speedup=1.5139x
+mode=linear model=27b name=attn_out m=5120 n=1 k=6144 linear_ms=0.052755 llmm1_ms=0.070383 speedup=0.7495x
+mode=linear model=27b name=mlp_gate_up m=34816 n=1 k=5120 linear_ms=0.500072 llmm1_ms=0.363727 speedup=1.3749x
+mode=linear model=27b name=mlp_down m=5120 n=1 k=17408 linear_ms=0.152454
+mode=linear model=27b name=lm_head m=248320 n=1 k=5120 linear_ms=1.900769 llmm1_ms=2.518891 speedup=0.7546x
