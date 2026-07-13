@@ -1,6 +1,0 @@
-[submodule "mcp-ssh"]
-	path = mcp-ssh
-	url = git@github.com:HaHas8468/mcp-ssh.git
-[submodule "vllm_cscc"]
-	path = vllm_cscc
-	url = https://gitlab.eduxiji.net/T2026106119911888/vllm_cscc.git
