@@ -49,3 +49,7 @@ docs/rankings/
 
 # temporary remote synchronization archives
 .tmp_sync/
+
+# 独立维护的相邻仓库
+mcp-ssh/
+vllm_cscc/
