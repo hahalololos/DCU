@@ -519,3 +519,22 @@
 - 新增 gfx936 平台识别 `on_gfx936()`；远端确认为 `gfx936/BW`，不属于既有 `_ON_GFX9`。
 - 恢复 HIP 下 `_rocm_C` 构建入口；确认 `env.sh` 下源码优先导入要求源码树存在匹配的
   `_rocm_C.abi3.so`。
+## 2026-07-13
+
+### Qwen3.5-27B Decode gate-up 专用 GEMV
+
+- 为 gfx936、BF16、TP=1、单 token 的 Qwen3.5-27B gate-up 精确形状
+  `(M=34816, N=1, K=5120)` 实现专用 GEMV，采用 128-bit BF16 加载、FP32 累加和
+  wave shuffle；比较单 wave/行与双 wave/行后，将双 wave/行接入严格形状 dispatch。
+- 远端 micro：现有 LLMM1 `0.362081 ms`，单 wave `0.325762 ms`，双 wave
+  `0.312014 ms`；最终方案相对 LLMM1 提升 `16.05%`（`1.16046x`）。三个随机种子
+  `0/1/17` 重复执行均与 `F.linear` bitwise 一致，max abs diff 为 `0`。
+- dispatch 定向测试 `20 passed`。27B 端到端三档各 `10/10` 成功：4--8K 吞吐
+  `16.3992 -> 17.4188 tok/s`（`+6.22%`），8--16K 为
+  `12.4463 -> 13.0498 tok/s`（`+4.85%`），16--32K 候选为
+  `9.0495 tok/s`，相对 profile 基线约 `+1.07%`；短、中档 P99 TPOT 分别改善
+  `6.51%/6.40%`。
+- 完整精度门禁通过：HotpotQA `77.96`、GovReport `33.51`、
+  retrieval_multi_point `100.00`、aggregation_keyword_aggregation `100.00`。
+- 长档收益较小；未继续重写 MLP down GEMV，因为现有 Tensile 有效带宽已接近专用
+  kernel，比赛剩余时间内获得显著端到端收益的成功率较低。

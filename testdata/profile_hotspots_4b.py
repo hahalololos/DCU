@@ -298,6 +298,62 @@ def run_llmm1_rows(repeats: int, rounds: int) -> None:
         torch.cuda.empty_cache()
 
 
+def run_llmm1_gate_up_gfx936(repeats: int, rounds: int) -> None:
+    torch.manual_seed(0)
+    device = torch.device("cuda")
+    output_features = 34_816
+    input_features = 5_120
+    x = (torch.rand(1, input_features, dtype=torch.bfloat16, device=device) * 2 - 1)
+    weight = (
+        torch.rand(
+            output_features,
+            input_features,
+            dtype=torch.bfloat16,
+            device=device,
+        )
+        * 2
+        - 1
+    )
+    runners = {
+        "linear": lambda: torch.nn.functional.linear(x, weight),
+        "llmm1": lambda: ops.LLMM1(weight, x, 4),
+        "wave1": lambda: ops.LLMM1Gfx936(weight, x, 1),
+        "wave2": lambda: ops.LLMM1Gfx936(weight, x, 2),
+    }
+    for runner in runners.values():
+        for _ in range(10):
+            runner()
+    torch.cuda.synchronize()
+
+    outputs = {backend: runner() for backend, runner in runners.items()}
+    torch.cuda.synchronize()
+    measurements = {backend: [] for backend in runners}
+    order = list(runners)
+    for round_idx in range(rounds):
+        round_order = order if round_idx % 2 == 0 else order[::-1]
+        for backend in round_order:
+            measurements[backend].append(_time_cuda(runners[backend], repeats))
+
+    medians = {
+        backend: statistics.median(values)
+        for backend, values in measurements.items()
+    }
+    llmm1_output = outputs["llmm1"]
+    linear_output = outputs["linear"]
+    for backend, output in outputs.items():
+        diff = (output.float() - linear_output.float()).abs()
+        print(
+            f"mode=llmm1_gate_up_gfx936 backend={backend} "
+            f"median_ms={medians[backend]:.6f} "
+            f"p99_ms={_p99(measurements[backend]):.6f} "
+            f"speedup_vs_llmm1={medians['llmm1'] / medians[backend]:.6f} "
+            f"bitwise_llmm1={torch.equal(output, llmm1_output)} "
+            f"max_abs_diff_vs_linear={diff.max().item():.8f} "
+            f"mean_abs_diff_vs_linear={diff.mean().item():.8f} "
+            f"finite={torch.isfinite(output).all().item()}"
+        )
+
+
 def run_linear_shapes(model_size: str, repeats: int) -> None:
     torch.manual_seed(0)
     device = torch.device("cuda")
@@ -342,6 +398,7 @@ def main() -> None:
             "ua3d_generic",
             "llmm1_lm_head",
             "llmm1_rows",
+            "llmm1_gate_up_gfx936",
             "linear_shapes",
         ),
     )
@@ -356,6 +413,8 @@ def main() -> None:
 
     if args.mode == "linear_shapes":
         run_linear_shapes(args.model_size, args.repeats)
+    elif args.mode == "llmm1_gate_up_gfx936":
+        run_llmm1_gate_up_gfx936(args.repeats, args.rounds)
     elif args.mode == "llmm1_rows":
         run_llmm1_rows(args.repeats, args.rounds)
     elif args.mode == "llmm1_lm_head":
