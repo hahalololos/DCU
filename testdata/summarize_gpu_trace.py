@@ -15,7 +15,7 @@ CATEGORY_PATTERNS = (
     ("ua2d", re.compile(r"unified_attention_2d", re.I)),
     ("ua3d_main", re.compile(r"unified_attention_3d", re.I)),
     ("ua3d_merge", re.compile(r"reduce_segments", re.I)),
-    ("llmm1", re.compile(r"LLMM1", re.I)),
+    ("gemm", re.compile(r"LLMM1|qwen35_gemv", re.I)),
     (
         "gdn",
         re.compile(

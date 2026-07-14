@@ -1,0 +1,2 @@
+usage: summarize_rocprof_27b.py [-h] --input-dir INPUT_DIR --output OUTPUT
+summarize_rocprof_27b.py: error: the following arguments are required: --input-dir

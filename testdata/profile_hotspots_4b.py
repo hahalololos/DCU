@@ -435,6 +435,63 @@ def run_llmm1_gfx936_shapes(repeats: int, rounds: int) -> None:
             torch.cuda.empty_cache()
 
 
+def run_qwen35_output_projection_gfx936(repeats: int, rounds: int) -> None:
+    """A/B the exact Qwen3.5-27B output projection against F.linear."""
+    device = torch.device("cuda")
+    input_features = 6_144
+    output_features = 5_120
+    for seed in (0, 1, 17):
+        torch.manual_seed(seed)
+        x = torch.randn(1, input_features, dtype=torch.bfloat16, device=device)
+        weight = torch.randn(
+            output_features,
+            input_features,
+            dtype=torch.bfloat16,
+            device=device,
+        )
+        runners = {
+            "linear": lambda: torch.nn.functional.linear(x, weight),
+            "out_proj_v5": lambda: ops.LLMM1Gfx936(weight, x, 5),
+        }
+        for runner in runners.values():
+            for _ in range(5):
+                runner()
+        torch.cuda.synchronize()
+
+        outputs = {backend: runner() for backend, runner in runners.items()}
+        torch.cuda.synchronize()
+        measurements = {backend: [] for backend in runners}
+        order = list(runners)
+        for round_idx in range(rounds):
+            round_order = order if round_idx % 2 == 0 else order[::-1]
+            for backend in round_order:
+                measurements[backend].append(_time_cuda(runners[backend], repeats))
+
+        medians = {
+            backend: statistics.median(values)
+            for backend, values in measurements.items()
+        }
+        linear_output = outputs["linear"]
+        print(
+            f"mode=qwen35_output_projection_gfx936 seed={seed} "
+            f"m={output_features} n=1 k={input_features}"
+        )
+        for backend, output in outputs.items():
+            diff = (output.float() - linear_output.float()).abs()
+            print(
+                f"backend={backend} median_ms={medians[backend]:.6f} "
+                f"p99_ms={_p99(measurements[backend]):.6f} "
+                f"speedup_vs_linear={medians['linear'] / medians[backend]:.6f} "
+                f"saved_ms_per_token={medians['linear'] - medians[backend]:.6f} "
+                f"bitwise_linear={torch.equal(output, linear_output)} "
+                f"max_abs_diff_vs_linear={diff.max().item():.8f} "
+                f"mean_abs_diff_vs_linear={diff.mean().item():.8f} "
+                f"finite={torch.isfinite(output).all().item()}"
+            )
+        del x, weight, outputs
+        torch.cuda.empty_cache()
+
+
 def run_linear_shapes(model_size: str, repeats: int) -> None:
     torch.manual_seed(0)
     device = torch.device("cuda")
@@ -481,6 +538,7 @@ def main() -> None:
             "llmm1_rows",
             "llmm1_gate_up_gfx936",
             "llmm1_gfx936_shapes",
+            "qwen35_output_projection_gfx936",
             "linear_shapes",
         ),
     )
@@ -500,6 +558,8 @@ def main() -> None:
         run_llmm1_gfx936_shapes(args.repeats, args.rounds)
     elif args.mode == "llmm1_gate_up_gfx936":
         run_llmm1_gfx936_shapes(args.repeats, args.rounds)
+    elif args.mode == "qwen35_output_projection_gfx936":
+        run_qwen35_output_projection_gfx936(args.repeats, args.rounds)
     elif args.mode == "llmm1_rows":
         run_llmm1_rows(args.repeats, args.rounds)
     elif args.mode == "llmm1_lm_head":

@@ -1,0 +1,3 @@
+mode=ua2d_ab model=27b context=8192 baseline_experiment=5 candidate_experiment=8 baseline_median_ms=18.378088 candidate_median_ms=16.160423 speedup=1.137228 baseline_p99_ms=18.541668 candidate_p99_ms=16.220222 bitwise=True max_abs_diff=0.00000000
+mode=ua2d_ab model=27b context=16384 baseline_experiment=5 candidate_experiment=8 baseline_median_ms=40.881478 candidate_median_ms=35.755873 speedup=1.143350 baseline_p99_ms=40.956158 candidate_p99_ms=35.771200 bitwise=True max_abs_diff=0.00000000
+mode=ua2d_ab model=27b context=32768 baseline_experiment=5 candidate_experiment=8 baseline_median_ms=86.642215 candidate_median_ms=75.377258 speedup=1.149448 baseline_p99_ms=86.796760 candidate_p99_ms=75.706601 bitwise=True max_abs_diff=0.00000000

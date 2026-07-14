@@ -1,0 +1,391 @@
+{
+  "source": {
+    "model": "Qwen3.5-27B",
+    "context_len": 22294,
+    "profile": "latest_quick_a5cbd48",
+    "rocprof_note": "计数器采集会重放应用，仅用于资源和访存瓶颈分类，不用于耗时对比"
+  },
+  "ua2d": {
+    "experiment_8": {
+      "label": "ua2d/experiment_8",
+      "kernel_name": "kernel_qwen35_unified_attention_2d_v3.kd",
+      "sample_count": 4,
+      "index": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "resources": {
+        "grd": 419840,
+        "wgr": 128,
+        "lds": 16384,
+        "scr": 0,
+        "arch_vgpr": 256,
+        "accum_vgpr": 0,
+        "sgpr": 96,
+        "wave_size": 64
+      },
+      "counters": {
+        "SQ_WAVES": 6560,
+        "SQ_INSTS_VALU": 1755198480,
+        "SQ_INSTS_SALU": 33729984,
+        "SQ_LDS_BANK_CONFLICT": 1452577920,
+        "FETCH_SIZE": 22248671,
+        "WRITE_SIZE": 49152,
+        "TCC_HIT_sum": 348293548.5,
+        "TCC_MISS_sum": 181103244
+      },
+      "l2_hit_ratio": 0.6579064199751455
+    },
+    "experiment_5_reference": {
+      "label": "ua2d/experiment_5_reference",
+      "kernel_name": "kernel_qwen35_unified_attention_2d_v2b.kd",
+      "sample_count": 1,
+      "index": [
+        9
+      ],
+      "resources": {
+        "grd": 419840,
+        "wgr": 128,
+        "lds": 16384,
+        "scr": 364,
+        "arch_vgpr": 256,
+        "accum_vgpr": 0,
+        "sgpr": 96,
+        "wave_size": 64
+      },
+      "counters": {
+        "SQ_WAVES": 6560,
+        "SQ_INSTS_VALU": 1623161504,
+        "SQ_INSTS_SALU": 48518168,
+        "SQ_LDS_BANK_CONFLICT": 988156032,
+        "FETCH_SIZE": 27867151.3125,
+        "WRITE_SIZE": 196752.125,
+        "TCC_HIT_sum": 329504525,
+        "TCC_MISS_sum": 229421700
+      },
+      "l2_hit_ratio": 0.5895313375213339
+    }
+  },
+  "gemv": {
+    "gdn_qkvz": {
+      "shape_m_n_k": [
+        16384,
+        1,
+        5120
+      ],
+      "calls_per_token": 48,
+      "v4": {
+        "label": "gdn_qkvz/v4",
+        "kernel_name": "(anonymous namespace)::qwen35_gemv_wave2_lds_kernel(__hip_bfloat16 const*, __hip_bfloat16 const*, __hip_bfloat16*) [clone .kd]",
+        "sample_count": 21,
+        "index": [
+          31,
+          32,
+          33,
+          34,
+          35,
+          41,
+          47,
+          410,
+          411,
+          412,
+          413,
+          414,
+          420,
+          426,
+          789,
+          790,
+          791,
+          792,
+          793,
+          799,
+          805
+        ],
+        "resources": {
+          "grd": 2097152,
+          "wgr": 256,
+          "lds": 10752,
+          "scr": 0,
+          "arch_vgpr": 24,
+          "accum_vgpr": 0,
+          "sgpr": 32,
+          "wave_size": 64
+        },
+        "counters": {
+          "SQ_WAVES": 32768,
+          "SQ_INSTS_VALU": 7438336,
+          "SQ_INSTS_SALU": 1081344,
+          "SQ_LDS_BANK_CONFLICT": 0,
+          "FETCH_SIZE": 163861,
+          "WRITE_SIZE": 32,
+          "TCC_HIT_sum": 229436,
+          "TCC_MISS_sum": 1311420
+        },
+        "l2_hit_ratio": 0.1489016494727606
+      },
+      "llmm1": {
+        "label": "gdn_qkvz/llmm1",
+        "kernel_name": "void LLGemm1_kernel<c10::BFloat16, 4>(c10::BFloat16 const*, c10::BFloat16 const*, c10::BFloat16*, int) [clone .kd]",
+        "sample_count": 21,
+        "index": [
+          11,
+          12,
+          13,
+          14,
+          15,
+          37,
+          43,
+          390,
+          391,
+          392,
+          393,
+          394,
+          416,
+          422,
+          769,
+          770,
+          771,
+          772,
+          773,
+          795,
+          801
+        ],
+        "resources": {
+          "grd": 2621440,
+          "wgr": 640,
+          "lds": 1024,
+          "scr": 0,
+          "arch_vgpr": 28,
+          "accum_vgpr": 0,
+          "sgpr": 32,
+          "wave_size": 64
+        },
+        "counters": {
+          "SQ_WAVES": 40960,
+          "SQ_INSTS_VALU": 19218432,
+          "SQ_INSTS_SALU": 8396800,
+          "SQ_LDS_BANK_CONFLICT": 131072,
+          "FETCH_SIZE": 163856.125,
+          "WRITE_SIZE": 32,
+          "TCC_HIT_sum": 265204,
+          "TCC_MISS_sum": 1311410
+        },
+        "l2_hit_ratio": 0.16821111572014455
+      }
+    },
+    "attn_qkv_gate": {
+      "shape_m_n_k": [
+        14336,
+        1,
+        5120
+      ],
+      "calls_per_token": 16,
+      "v4": {
+        "label": "attn_qkv_gate/v4",
+        "kernel_name": "(anonymous namespace)::qwen35_gemv_wave2_lds_kernel(__hip_bfloat16 const*, __hip_bfloat16 const*, __hip_bfloat16*) [clone .kd]",
+        "sample_count": 21,
+        "index": [
+          160,
+          161,
+          162,
+          163,
+          164,
+          171,
+          178,
+          539,
+          540,
+          541,
+          542,
+          543,
+          550,
+          557,
+          918,
+          919,
+          920,
+          921,
+          922,
+          929,
+          936
+        ],
+        "resources": {
+          "grd": 1835008,
+          "wgr": 256,
+          "lds": 10752,
+          "scr": 0,
+          "arch_vgpr": 24,
+          "accum_vgpr": 0,
+          "sgpr": 32,
+          "wave_size": 64
+        },
+        "counters": {
+          "SQ_WAVES": 28672,
+          "SQ_INSTS_VALU": 6508544,
+          "SQ_INSTS_SALU": 946176,
+          "SQ_LDS_BANK_CONFLICT": 0,
+          "FETCH_SIZE": 143381.125,
+          "WRITE_SIZE": 28,
+          "TCC_HIT_sum": 197174,
+          "TCC_MISS_sum": 1147512
+        },
+        "l2_hit_ratio": 0.14663200182049935
+      },
+      "llmm1": {
+        "label": "attn_qkv_gate/llmm1",
+        "kernel_name": "void LLGemm1_kernel<c10::BFloat16, 4>(c10::BFloat16 const*, c10::BFloat16 const*, c10::BFloat16*, int) [clone .kd]",
+        "sample_count": 21,
+        "index": [
+          140,
+          141,
+          142,
+          143,
+          144,
+          167,
+          174,
+          519,
+          520,
+          521,
+          522,
+          523,
+          546,
+          553,
+          898,
+          899,
+          900,
+          901,
+          902,
+          925,
+          932
+        ],
+        "resources": {
+          "grd": 2293760,
+          "wgr": 640,
+          "lds": 1024,
+          "scr": 0,
+          "arch_vgpr": 28,
+          "accum_vgpr": 0,
+          "sgpr": 32,
+          "wave_size": 64
+        },
+        "counters": {
+          "SQ_WAVES": 35840,
+          "SQ_INSTS_VALU": 16816128,
+          "SQ_INSTS_SALU": 7347200,
+          "SQ_LDS_BANK_CONFLICT": 114688,
+          "FETCH_SIZE": 143376,
+          "WRITE_SIZE": 28,
+          "TCC_HIT_sum": 229575,
+          "TCC_MISS_sum": 1147503
+        },
+        "l2_hit_ratio": 0.16671168953392618
+      }
+    },
+    "mlp_gate_up": {
+      "shape_m_n_k": [
+        34816,
+        1,
+        5120
+      ],
+      "calls_per_token": 64,
+      "v4": {
+        "label": "mlp_gate_up/v4",
+        "kernel_name": "(anonymous namespace)::qwen35_gemv_wave2_lds_kernel(__hip_bfloat16 const*, __hip_bfloat16 const*, __hip_bfloat16*) [clone .kd]",
+        "sample_count": 21,
+        "index": [
+          286,
+          287,
+          288,
+          289,
+          290,
+          296,
+          302,
+          665,
+          666,
+          667,
+          668,
+          669,
+          675,
+          681,
+          1044,
+          1045,
+          1046,
+          1047,
+          1048,
+          1054,
+          1060
+        ],
+        "resources": {
+          "grd": 4456448,
+          "wgr": 256,
+          "lds": 10752,
+          "scr": 0,
+          "arch_vgpr": 24,
+          "accum_vgpr": 0,
+          "sgpr": 32,
+          "wave_size": 64
+        },
+        "counters": {
+          "SQ_WAVES": 69632,
+          "SQ_INSTS_VALU": 15806464,
+          "SQ_INSTS_SALU": 2297856,
+          "SQ_LDS_BANK_CONFLICT": 0,
+          "FETCH_SIZE": 348181.875,
+          "WRITE_SIZE": 68,
+          "TCC_HIT_sum": 511632,
+          "TCC_MISS_sum": 2786563
+        },
+        "l2_hit_ratio": 0.15512484859142653
+      },
+      "llmm1": {
+        "label": "mlp_gate_up/llmm1",
+        "kernel_name": "void LLGemm1_kernel<c10::BFloat16, 4>(c10::BFloat16 const*, c10::BFloat16 const*, c10::BFloat16*, int) [clone .kd]",
+        "sample_count": 21,
+        "index": [
+          266,
+          267,
+          268,
+          269,
+          270,
+          292,
+          298,
+          645,
+          646,
+          647,
+          648,
+          649,
+          671,
+          677,
+          1024,
+          1025,
+          1026,
+          1027,
+          1028,
+          1050,
+          1056
+        ],
+        "resources": {
+          "grd": 5570560,
+          "wgr": 640,
+          "lds": 1024,
+          "scr": 0,
+          "arch_vgpr": 28,
+          "accum_vgpr": 0,
+          "sgpr": 32,
+          "wave_size": 64
+        },
+        "counters": {
+          "SQ_WAVES": 87040,
+          "SQ_INSTS_VALU": 40839168,
+          "SQ_INSTS_SALU": 17843200,
+          "SQ_LDS_BANK_CONFLICT": 278528,
+          "FETCH_SIZE": 348176.8125,
+          "WRITE_SIZE": 68,
+          "TCC_HIT_sum": 577033,
+          "TCC_MISS_sum": 2786558
+        },
+        "l2_hit_ratio": 0.1715526649940495
+      }
+    }
+  }
+}

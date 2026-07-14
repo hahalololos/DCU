@@ -1,0 +1,370 @@
+{
+  "trace": "/root/profile27b_latest_a5cbd48/traces/rank0.1784008761890184512.pt.trace.json.gz",
+  "kernel_events": 7140,
+  "total_kernel_ms": 3840.596315000012,
+  "gpu_span_ms": 3879.2002130126953,
+  "gpu_busy_union_ms": 3840.594909790039,
+  "gpu_idle_gap_ms": 38.60530322265625,
+  "gaps_over_5us": 362,
+  "gap_over_5us_ms": 38.59344189453125,
+  "categories": [
+    {
+      "category": "gemm",
+      "calls": 1992,
+      "total_ms": 2285.7868760000033,
+      "share": 0.595164575634395
+    },
+    {
+      "category": "ua2d",
+      "calls": 64,
+      "total_ms": 1003.5616859999999,
+      "share": 0.26130361112945993
+    },
+    {
+      "category": "gdn",
+      "calls": 768,
+      "total_ms": 343.43336500000015,
+      "share": 0.08942188577817221
+    },
+    {
+      "category": "other",
+      "calls": 3256,
+      "total_ms": 176.08090900000045,
+      "share": 0.04584728374400888
+    },
+    {
+      "category": "memcpy",
+      "calls": 996,
+      "total_ms": 29.56714400000028,
+      "share": 0.007698581567794945
+    },
+    {
+      "category": "kv_cache",
+      "calls": 64,
+      "total_ms": 2.1663349999999997,
+      "share": 0.0005640621461670055
+    }
+  ],
+  "rows": [
+    {
+      "name": "kernel_qwen35_unified_attention_2d_v3",
+      "category": "ua2d",
+      "calls": 64,
+      "total_ms": 1003.5616859999999,
+      "mean_us": 15680.651343749998,
+      "share": 0.26130361112945993
+    },
+    {
+      "name": "Cijk_Alik_Bljk_BBH_MT256x256x16_SE_AMAS3_BW_DTL0_BL1_DRB16_ALT_KME0_ETSP_EPS1_FL0_GRVW8_GSU1_ISA936_IU1_KME_GRCMn1_K1_KLA_LDL1_LRVW8_MAC_MMAC_BW1_MMAC_KM0_MMAC_KME1_NLCA1_NLCB1_OLDSR0_PGR1_PLR1_RK1_SU0_SUM0_SUS256_SVW4_TT16_8_TLM0_ULDSWM0_USFGRO0_USSB0_VAW1_VSn1_VW8_WG16_32_1_WGM4",
+      "category": "gemm",
+      "calls": 192,
+      "total_ms": 828.0508130000002,
+      "mean_us": 4312.764651041668,
+      "share": 0.21560475121166114
+    },
+    {
+      "name": "Cijk_Alik_Bljk_BBH_MT256x256x16_SE_AMAS3_BW_DTL0_BL1_DRB16_ALT_KME0_ETSP_EPS1_FL0_GRVW8_GSU1_ISA936_IU1_KME_GRCMn1_K1_KLA_LDL1_LRVW8_MAC_MMAC_BW1_MMAC_KM0_MMAC_KME1_NLCA1_NLCB1_OLDSR0_PGR1_PLR1_RK1_SU0_SUM0_SUS256_SVW4_TT16_8_TLM0_ULDSWM0_USFGRO0_USSB0_VAW1_VSn1_VW8_WG16_32_1_WGM8",
+      "category": "gemm",
+      "calls": 448,
+      "total_ms": 660.7314870000002,
+      "mean_us": 1474.847069196429,
+      "share": 0.17203877544208865
+    },
+    {
+      "name": "Cijk_Alik_Bljk_BBH_MT256x256x16_SE_AMAS3_BW_DTL0_BL1_DRB16_ALT_KME0_ETSP_EPS1_FL0_GRVW8_GSU1_ISA936_IU1_KME_GRCMn1_K1_KLA_LDL1_LRVW8_MAC_MMAC_BW1_MMAC_KM0_MMAC_KME1_NLCA1_NLCB1_OLDSR0_PGR1_PLR1_RK1_SU0_SUM0_SUS256_SVW4_TT16_8_TLM0_ULDSWM0_USFGRO0_USSB0_VAW1_VSn1_VW8_WG16_32_1_WGM1",
+      "category": "gemm",
+      "calls": 384,
+      "total_ms": 616.135275,
+      "mean_us": 1604.5189453125001,
+      "share": 0.16042698176676193
+    },
+    {
+      "name": "chunk_gated_delta_rule_fwd_kernel_h_blockdim64",
+      "category": "gdn",
+      "calls": 192,
+      "total_ms": 159.52687100000006,
+      "mean_us": 830.8691197916669,
+      "share": 0.04153700569282547
+    },
+    {
+      "name": "chunk_fwd_kernel_o",
+      "category": "gdn",
+      "calls": 192,
+      "total_ms": 70.53351899999998,
+      "mean_us": 367.3620781249999,
+      "share": 0.018365251959577472
+    },
+    {
+      "name": "_causal_conv1d_fwd_kernel",
+      "category": "gdn",
+      "calls": 192,
+      "total_ms": 64.69303599999999,
+      "mean_us": 336.94289583333324,
+      "share": 0.01684452899861718
+    },
+    {
+      "name": "triton_poi_fused_mul_rocm_unquantized_gemm_silu_slice_4",
+      "category": "gemm",
+      "calls": 192,
+      "total_ms": 62.06328800000002,
+      "mean_us": 323.24629166666676,
+      "share": 0.016159805121304407
+    },
+    {
+      "name": "recompute_w_u_fwd_kernel",
+      "category": "gdn",
+      "calls": 192,
+      "total_ms": 48.67993899999996,
+      "mean_us": 253.54134895833315,
+      "share": 0.012675099127152032
+    },
+    {
+      "name": "triton_poi_fused__to_copy__unsafe_view_add_clone_mean_mul_pow_reshape_rocm_unquantized_gemm_rsqrt_silu_view_2",
+      "category": "gemm",
+      "calls": 192,
+      "total_ms": 37.78281599999993,
+      "mean_us": 196.78549999999964,
+      "share": 0.009837747292636199
+    },
+    {
+      "name": "merge_16x16_to_64x64_inverse_kernel",
+      "category": "other",
+      "calls": 192,
+      "total_ms": 32.751616999999996,
+      "mean_us": 170.58133854166667,
+      "share": 0.008527742650817988
+    },
+    {
+      "name": "void at::native::elementwise_kernel_manual_unroll<128, 8, at::native::gpu_kernel_impl_nocast<at::native::direct_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda()#3}::operator()() const::{lambda()#12}::operator()() const::{lambda(c10::BFloat16)#1}>(at::TensorIteratorBase&, at::native::direct_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda()#3}::operator()() const::{lambda()#12}::operator()() const::{lambda(c10::BFloat16)#1} const&)::{lambda(int, bool)#1}>(int, at::native::gpu_kernel_impl_nocast<at::native::direct_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda()#3}::operator()() const::{lambda()#12}::operator()() const::{lambda(c10::BFloat16)#1}>(at::TensorIteratorBase&, at::native::direct_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda()#3}::operator()() const::{lambda()#12}::operator()() const::{lambda(c10::BFloat16)#1} const&)::{lambda(int, bool)#1})",
+      "category": "memcpy",
+      "calls": 576,
+      "total_ms": 26.977007000000036,
+      "mean_us": 46.835081597222285,
+      "share": 0.00702417145343742
+    },
+    {
+      "name": "triton_red_fused__to_copy_add_copy__mean_mul_pow_rsqrt_5",
+      "category": "other",
+      "calls": 128,
+      "total_ms": 26.037288999999966,
+      "mean_us": 203.41632031249972,
+      "share": 0.006779491220753276
+    },
+    {
+      "name": "triton_poi_fused_mul_rocm_unquantized_gemm_silu_slice_2",
+      "category": "gemm",
+      "calls": 64,
+      "total_ms": 20.636557,
+      "mean_us": 322.446203125,
+      "share": 0.005373268968519525
+    },
+    {
+      "name": "triton_red_fused__to_copy_add_mean_mul_pow_rocm_unquantized_gemm_rsqrt_3",
+      "category": "gemm",
+      "calls": 192,
+      "total_ms": 19.66155599999998,
+      "mean_us": 102.40393749999988,
+      "share": 0.005119401881215396
+    },
+    {
+      "name": "chunk_scaled_dot_kkt_fwd_kernel",
+      "category": "other",
+      "calls": 192,
+      "total_ms": 15.219151000000016,
+      "mean_us": 79.26641145833342,
+      "share": 0.003962705202980951
+    },
+    {
+      "name": "triton_poi_fused_0",
+      "category": "other",
+      "calls": 256,
+      "total_ms": 14.124052999999996,
+      "mean_us": 55.172082031249985,
+      "share": 0.0036775677112526606
+    },
+    {
+      "name": "l2norm_fwd_kernel2",
+      "category": "other",
+      "calls": 384,
+      "total_ms": 14.044565000000015,
+      "mean_us": 36.574388020833375,
+      "share": 0.0036568709252641075
+    },
+    {
+      "name": "fused_gdn_gating_kernel",
+      "category": "other",
+      "calls": 192,
+      "total_ms": 13.714836000000046,
+      "mean_us": 71.43143750000024,
+      "share": 0.0035710173304168273
+    },
+    {
+      "name": "triton_red_fused__to_copy_add_copy__mean_mul_pow_rocm_unquantized_gemm_rsqrt_5",
+      "category": "gemm",
+      "calls": 64,
+      "total_ms": 13.222806,
+      "mean_us": 206.60634375,
+      "share": 0.0034429044126185284
+    },
+    {
+      "name": "triton_red_fused__to_copy_add_copy__mean_mul_pow_rsqrt_3",
+      "category": "other",
+      "calls": 64,
+      "total_ms": 12.885685,
+      "mean_us": 201.33882812500002,
+      "share": 0.0033551261166587776
+    },
+    {
+      "name": "triton_per_fused_1",
+      "category": "other",
+      "calls": 192,
+      "total_ms": 10.884762999999996,
+      "mean_us": 56.69147395833331,
+      "share": 0.002834133584279076
+    },
+    {
+      "name": "Cijk_Alik_Bljk_BBH_MT128x64x32_SE_AMAS3_BW_DTL0_BL1_DRB16_ALT_KME0_ETSP_EPS1_FL0_GRVW4_GSU1_ISA936_IU1_KME_GRCMn1_K1_KLA_LDL1_LRVW4_MAC_MMAC_BW1_MMAC_KM0_MMAC_KME1_NLCA1_NLCB1_OLDSR0_PGR1_PLR1_RK1_SU0_SUM0_SUS256_SVW4_TT8_4_TLM0_ULDSWM0_USFGRO0_USSB0_VAW1_VSn1_VW4_WG16_16_1_WGM1",
+      "category": "gemm",
+      "calls": 144,
+      "total_ms": 10.186730999999995,
+      "mean_us": 70.74118749999997,
+      "share": 0.0026523826417825334
+    },
+    {
+      "name": "triton_poi_fused_8",
+      "category": "other",
+      "calls": 64,
+      "total_ms": 8.281209,
+      "mean_us": 129.393890625,
+      "share": 0.0021562300020068564
+    },
+    {
+      "name": "Cijk_Alik_Bljk_BBH_MT32x16x4_SE_AMAS3_BW_DTL0_BL1_DRB16_ALT_KME0_ETSP_EPS1_FL0_GRVW2_GSU1_ISA936_IU1_KME_GRCMn1_K1_KLA_LDL1_LRVW2_MAC_MMAC_BW1_MMAC_KM0_MMAC_KME1_NLCA1_NLCB1_OLDSR0_PGR1_PLR1_RK1_SU0_SUM0_SUS256_SVW4_TT4_2_TLM0_ULDSWM0_USFGRO0_USSB0_VAW2_VSn1_VW2_WG8_8_1_WGM1",
+      "category": "gemm",
+      "calls": 4,
+      "total_ms": 7.605912,
+      "mean_us": 1901.478,
+      "share": 0.0019803987131618065
+    },
+    {
+      "name": "triton_red_fused__to_copy_add_mean_mul_pow_rocm_unquantized_gemm_rsqrt_1",
+      "category": "gemm",
+      "calls": 64,
+      "total_ms": 6.521529999999999,
+      "mean_us": 101.89890625,
+      "share": 0.001698051413143633
+    },
+    {
+      "name": "triton_poi_fused_6",
+      "category": "other",
+      "calls": 192,
+      "total_ms": 4.9399629999999926,
+      "mean_us": 25.728973958333295,
+      "share": 0.0012862489558473622
+    },
+    {
+      "name": "triton_red_fused_7",
+      "category": "other",
+      "calls": 64,
+      "total_ms": 4.582653000000001,
+      "mean_us": 71.60395312500002,
+      "share": 0.0011932139241246933
+    },
+    {
+      "name": "void at::native::index_elementwise_kernel<128, 4, at::native::gpu_index_kernel<at::native::index_kernel_impl<at::native::OpaqueType<4> >(at::TensorIteratorBase&, c10::ArrayRef<long>, c10::ArrayRef<long>)::{lambda(char*, char const*, long)#1}>(at::TensorIteratorBase&, c10::ArrayRef<long>, c10::ArrayRef<long>, at::native::index_kernel_impl<at::native::OpaqueType<4> >(at::TensorIteratorBase&, c10::ArrayRef<long>, c10::ArrayRef<long>)::{lambda(char*, char const*, long)#1} const&, bool)::{lambda(int)#1}>(long, at::native::gpu_index_kernel<at::native::index_kernel_impl<at::native::OpaqueType<4> >(at::TensorIteratorBase&, c10::ArrayRef<long>, c10::ArrayRef<long>)::{lambda(char*, char const*, long)#1}>(at::TensorIteratorBase&, c10::ArrayRef<long>, c10::ArrayRef<long>, at::native::index_kernel_impl<at::native::OpaqueType<4> >(at::TensorIteratorBase&, c10::ArrayRef<long>, c10::ArrayRef<long>)::{lambda(char*, char const*, long)#1} const&, bool)::{lambda(int)#1})",
+      "category": "other",
+      "calls": 192,
+      "total_ms": 3.769084999999996,
+      "mean_us": 19.630651041666646,
+      "share": 0.0009813801532015437
+    },
+    {
+      "name": "void at::native::index_elementwise_kernel<128, 4, at::native::gpu_index_kernel<at::native::index_put_kernel_impl<at::native::OpaqueType<4> >(at::TensorIterator&, c10::ArrayRef<long>, c10::ArrayRef<long>)::{lambda(char*, char const*, long)#1}>(at::TensorIteratorBase&, c10::ArrayRef<long>, c10::ArrayRef<long>, at::native::index_put_kernel_impl<at::native::OpaqueType<4> >(at::TensorIterator&, c10::ArrayRef<long>, c10::ArrayRef<long>)::{lambda(char*, char const*, long)#1} const&, bool)::{lambda(int)#1}>(long, at::native::gpu_index_kernel<at::native::index_put_kernel_impl<at::native::OpaqueType<4> >(at::TensorIterator&, c10::ArrayRef<long>, c10::ArrayRef<long>)::{lambda(char*, char const*, long)#1}>(at::TensorIteratorBase&, c10::ArrayRef<long>, c10::ArrayRef<long>, at::native::index_put_kernel_impl<at::native::OpaqueType<4> >(at::TensorIterator&, c10::ArrayRef<long>, c10::ArrayRef<long>)::{lambda(char*, char const*, long)#1} const&, bool)::{lambda(int)#1})",
+      "category": "other",
+      "calls": 192,
+      "total_ms": 3.7514859999999954,
+      "mean_us": 19.538989583333308,
+      "share": 0.000976797791881437
+    },
+    {
+      "name": "void at::native::vectorized_elementwise_kernel<8, at::native::FillFunctor<c10::BFloat16>, std::array<char*, 1ul> >(int, at::native::FillFunctor<c10::BFloat16>, std::array<char*, 1ul>)",
+      "category": "other",
+      "calls": 192,
+      "total_ms": 3.657087000000006,
+      "mean_us": 19.047328125000032,
+      "share": 0.0009522185358863978
+    },
+    {
+      "name": "Cijk_Alik_Bljk_BBH_MT32x64x128_SE_AMAS3_BW_DTL0_BL1_DRB16_ALT_KME0_ETSP_EPS1_FL0_GRVW4_GSU1_ISA936_IU1_KME_GRCMn1_K1_KLA_LDL1_LRVW4_MAC_MMAC_BW1_MMAC_KM0_MMAC_KME1_NLCA1_NLCB1_OLDSR0_PGR1_PLR1_RK1_SU0_SUM0_SUS256_SVW4_TT4_8_TLM0_ULDSWM0_USFGRO0_USSB0_VAW2_VSn1_VW4_WG8_8_1_WGM1",
+      "category": "gemm",
+      "calls": 48,
+      "total_ms": 2.7417089999999997,
+      "mean_us": 57.118937499999994,
+      "share": 0.0007138758607073213
+    },
+    {
+      "name": "void at::native::elementwise_kernel_manual_unroll<128, 4, at::native::gpu_kernel_impl<at::native::direct_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda()#3}::operator()() const::{lambda()#4}::operator()() const::{lambda(long)#1}>(at::TensorIteratorBase&, at::native::direct_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda()#3}::operator()() const::{lambda()#4}::operator()() const::{lambda(long)#1} const&)::{lambda(int, bool)#1}>(int, at::native::gpu_kernel_impl<at::native::direct_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda()#3}::operator()() const::{lambda()#4}::operator()() const::{lambda(long)#1}>(at::TensorIteratorBase&, at::native::direct_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda()#3}::operator()() const::{lambda()#4}::operator()() const::{lambda(long)#1} const&)::{lambda(int, bool)#1})",
+      "category": "memcpy",
+      "calls": 396,
+      "total_ms": 2.4133610000000028,
+      "mean_us": 6.094345959595966,
+      "share": 0.0006283818454374565
+    },
+    {
+      "name": "reshape_and_cache_kernel_flash",
+      "category": "kv_cache",
+      "calls": 64,
+      "total_ms": 2.1663349999999997,
+      "mean_us": 33.84898437499999,
+      "share": 0.0005640621461670055
+    },
+    {
+      "name": "chunk_local_cumsum_scalar_kernel",
+      "category": "other",
+      "calls": 192,
+      "total_ms": 2.106204000000002,
+      "mean_us": 10.96981250000001,
+      "share": 0.0005484054629157231
+    },
+    {
+      "name": "void at::native::elementwise_kernel_manual_unroll<128, 4, at::native::gpu_kernel_impl_nocast<at::native::(anonymous namespace)::masked_fill_kernel(at::TensorIterator&, c10::Scalar const&)::{lambda()#1}::operator()() const::{lambda()#7}::operator()() const::{lambda(float, bool)#1}>(at::TensorIteratorBase&, at::native::(anonymous namespace)::masked_fill_kernel(at::TensorIterator&, c10::Scalar const&)::{lambda()#1}::operator()() const::{lambda()#7}::operator()() const::{lambda(float, bool)#1} const&)::{lambda(int, bool)#1}>(int, at::native::gpu_kernel_impl_nocast<at::native::(anonymous namespace)::masked_fill_kernel(at::TensorIterator&, c10::Scalar const&)::{lambda()#1}::operator()() const::{lambda()#7}::operator()() const::{lambda(float, bool)#1}>(at::TensorIteratorBase&, at::native::(anonymous namespace)::masked_fill_kernel(at::TensorIterator&, c10::Scalar const&)::{lambda()#1}::operator()() const::{lambda()#7}::operator()() const::{lambda(float, bool)#1} const&)::{lambda(int, bool)#1})",
+      "category": "other",
+      "calls": 192,
+      "total_ms": 1.9623679999999992,
+      "mean_us": 10.220666666666663,
+      "share": 0.0005109539871023891
+    },
+    {
+      "name": "void at::native::vectorized_elementwise_kernel<16, at::native::bitwise_not_kernel_cuda(at::TensorIteratorBase&)::{lambda(bool)#1}, std::array<char*, 2ul> >(int, at::native::bitwise_not_kernel_cuda(at::TensorIteratorBase&)::{lambda(bool)#1}, std::array<char*, 2ul>)",
+      "category": "other",
+      "calls": 192,
+      "total_ms": 1.1673279999999988,
+      "mean_us": 6.079833333333327,
+      "share": 0.00030394446701956885
+    },
+    {
+      "name": "_zero_kv_blocks_kernel",
+      "category": "other",
+      "calls": 4,
+      "total_ms": 0.81391,
+      "mean_us": 203.4775,
+      "share": 0.0002119228195947476
+    },
+    {
+      "name": "triton_poi_fused_mul_rocm_unquantized_gemm_sigmoid_view_0",
+      "category": "gemm",
+      "calls": 4,
+      "total_ms": 0.44639599999999996,
+      "mean_us": 111.59899999999999,
+      "share": 0.00011623090879313062
+    },
+    {
+      "name": "triton_red_fused_1",
+      "category": "other",
+      "calls": 4,
+      "total_ms": 0.38287600000000005,
+      "mean_us": 95.71900000000001,
+      "share": 9.969181048906954e-05
+    }
+  ]
+}

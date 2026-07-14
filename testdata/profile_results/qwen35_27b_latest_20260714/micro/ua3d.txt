@@ -1,0 +1,6 @@
+mode=ua3d model=27b context=8192 segments=16 repeats=100 average_ms=0.292465
+verify_equal=True max_abs_diff=0.00000000
+mode=ua3d model=27b context=16384 segments=16 repeats=100 average_ms=0.288403
+verify_equal=True max_abs_diff=0.00000000
+mode=ua3d model=27b context=32768 segments=16 repeats=100 average_ms=0.304386
+verify_equal=True max_abs_diff=0.00000000

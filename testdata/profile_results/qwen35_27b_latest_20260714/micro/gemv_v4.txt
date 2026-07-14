@@ -1,0 +1,63 @@
+mode=llmm1_gfx936_shapes seed=0 name=gdn_qkvz m=16384 n=1 k=5120 calls_per_token=48
+backend=linear median_ms=0.238914 p99_ms=0.239129 speedup_vs_llmm1=0.732193 saved_ms_per_token=-3.071176 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=llmm1 median_ms=0.174931 p99_ms=0.175066 speedup_vs_llmm1=1.000000 saved_ms_per_token=0.000000 bitwise_llmm1=True max_abs_diff_vs_linear=0.50000000 mean_abs_diff_vs_linear=0.04995581 finite=True
+backend=v1 median_ms=0.149297 p99_ms=0.151419 speedup_vs_llmm1=1.171700 saved_ms_per_token=1.230447 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=v2 median_ms=0.147701 p99_ms=0.150734 speedup_vs_llmm1=1.184358 saved_ms_per_token=1.307037 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=v3 median_ms=0.141845 p99_ms=0.141885 speedup_vs_llmm1=1.233253 saved_ms_per_token=1.588123 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=v4 median_ms=0.140333 p99_ms=0.140434 speedup_vs_llmm1=1.246539 saved_ms_per_token=1.660690 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+mode=llmm1_gfx936_shapes seed=0 name=attn_qkv_gate m=14336 n=1 k=5120 calls_per_token=16
+backend=linear median_ms=0.234441 p99_ms=0.234692 speedup_vs_llmm1=0.657888 saved_ms_per_token=-1.283282 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=llmm1 median_ms=0.154236 p99_ms=0.154342 speedup_vs_llmm1=1.000000 saved_ms_per_token=0.000000 bitwise_llmm1=True max_abs_diff_vs_linear=0.50000000 mean_abs_diff_vs_linear=0.04974237 finite=True
+backend=v1 median_ms=0.143521 p99_ms=0.148292 speedup_vs_llmm1=1.074660 saved_ms_per_token=0.171444 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=v2 median_ms=0.139631 p99_ms=0.141442 speedup_vs_llmm1=1.104598 saved_ms_per_token=0.233682 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=v3 median_ms=0.124450 p99_ms=0.124466 speedup_vs_llmm1=1.239336 saved_ms_per_token=0.476567 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=v4 median_ms=0.123035 p99_ms=0.123133 speedup_vs_llmm1=1.253589 saved_ms_per_token=0.499207 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+mode=llmm1_gfx936_shapes seed=0 name=mlp_gate_up m=34816 n=1 k=5120 calls_per_token=64
+backend=linear median_ms=0.497826 p99_ms=0.498453 speedup_vs_llmm1=0.726102 saved_ms_per_token=-8.726622 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=llmm1 median_ms=0.361473 p99_ms=0.361652 speedup_vs_llmm1=1.000000 saved_ms_per_token=0.000000 bitwise_llmm1=True max_abs_diff_vs_linear=0.50000000 mean_abs_diff_vs_linear=0.04965249 finite=True
+backend=v1 median_ms=0.323648 p99_ms=0.325240 speedup_vs_llmm1=1.116868 saved_ms_per_token=2.420738 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=v2 median_ms=0.309124 p99_ms=0.312922 speedup_vs_llmm1=1.169344 saved_ms_per_token=3.350301 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=v3 median_ms=0.299091 p99_ms=0.299209 speedup_vs_llmm1=1.208570 saved_ms_per_token=3.992418 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=v4 median_ms=0.294027 p99_ms=0.294152 speedup_vs_llmm1=1.229387 saved_ms_per_token=4.316530 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+mode=llmm1_gfx936_shapes seed=1 name=gdn_qkvz m=16384 n=1 k=5120 calls_per_token=48
+backend=linear median_ms=0.238778 p99_ms=0.238941 speedup_vs_llmm1=0.732432 saved_ms_per_token=-3.066684 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=llmm1 median_ms=0.174888 p99_ms=0.174946 speedup_vs_llmm1=1.000000 saved_ms_per_token=0.000000 bitwise_llmm1=True max_abs_diff_vs_linear=0.50000000 mean_abs_diff_vs_linear=0.04977531 finite=True
+backend=v1 median_ms=0.149798 p99_ms=0.150943 speedup_vs_llmm1=1.167494 saved_ms_per_token=1.204335 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=v2 median_ms=0.148757 p99_ms=0.152190 speedup_vs_llmm1=1.175667 saved_ms_per_token=1.254318 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=v3 median_ms=0.141786 p99_ms=0.141822 speedup_vs_llmm1=1.233467 saved_ms_per_token=1.588915 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=v4 median_ms=0.140285 p99_ms=0.140334 speedup_vs_llmm1=1.246666 saved_ms_per_token=1.660968 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+mode=llmm1_gfx936_shapes seed=1 name=attn_qkv_gate m=14336 n=1 k=5120 calls_per_token=16
+backend=linear median_ms=0.234437 p99_ms=0.235499 speedup_vs_llmm1=0.658198 saved_ms_per_token=-1.282097 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=llmm1 median_ms=0.154306 p99_ms=0.154799 speedup_vs_llmm1=1.000000 saved_ms_per_token=0.000000 bitwise_llmm1=True max_abs_diff_vs_linear=0.50000000 mean_abs_diff_vs_linear=0.04966026 finite=True
+backend=v1 median_ms=0.144904 p99_ms=0.146096 speedup_vs_llmm1=1.064885 saved_ms_per_token=0.150433 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=v2 median_ms=0.138744 p99_ms=0.141955 speedup_vs_llmm1=1.112166 saved_ms_per_token=0.248997 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=v3 median_ms=0.124552 p99_ms=0.124730 speedup_vs_llmm1=1.238889 saved_ms_per_token=0.476067 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=v4 median_ms=0.123246 p99_ms=0.124102 speedup_vs_llmm1=1.252013 saved_ms_per_token=0.496956 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+mode=llmm1_gfx936_shapes seed=1 name=mlp_gate_up m=34816 n=1 k=5120 calls_per_token=64
+backend=linear median_ms=0.498335 p99_ms=0.498859 speedup_vs_llmm1=0.725349 saved_ms_per_token=-8.759570 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=llmm1 median_ms=0.361467 p99_ms=0.361612 speedup_vs_llmm1=1.000000 saved_ms_per_token=0.000000 bitwise_llmm1=True max_abs_diff_vs_linear=0.50000000 mean_abs_diff_vs_linear=0.04973153 finite=True
+backend=v1 median_ms=0.324675 p99_ms=0.327546 speedup_vs_llmm1=1.113321 saved_ms_per_token=2.354709 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=v2 median_ms=0.307313 p99_ms=0.310943 speedup_vs_llmm1=1.176218 saved_ms_per_token=3.465866 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=v3 median_ms=0.299405 p99_ms=0.299604 speedup_vs_llmm1=1.207285 saved_ms_per_token=3.971977 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=v4 median_ms=0.294449 p99_ms=0.294591 speedup_vs_llmm1=1.227605 saved_ms_per_token=4.289151 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+mode=llmm1_gfx936_shapes seed=17 name=gdn_qkvz m=16384 n=1 k=5120 calls_per_token=48
+backend=linear median_ms=0.238891 p99_ms=0.239325 speedup_vs_llmm1=0.731993 saved_ms_per_token=-3.073179 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=llmm1 median_ms=0.174867 p99_ms=0.175009 speedup_vs_llmm1=1.000000 saved_ms_per_token=0.000000 bitwise_llmm1=True max_abs_diff_vs_linear=0.50000000 mean_abs_diff_vs_linear=0.05020093 finite=True
+backend=v1 median_ms=0.149095 p99_ms=0.150217 speedup_vs_llmm1=1.172855 saved_ms_per_token=1.237047 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=v2 median_ms=0.149040 p99_ms=0.152053 speedup_vs_llmm1=1.173287 saved_ms_per_token=1.239683 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=v3 median_ms=0.141772 p99_ms=0.141897 speedup_vs_llmm1=1.233435 saved_ms_per_token=1.588540 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=v4 median_ms=0.140310 p99_ms=0.140372 speedup_vs_llmm1=1.246291 saved_ms_per_token=1.658736 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+mode=llmm1_gfx936_shapes seed=17 name=attn_qkv_gate m=14336 n=1 k=5120 calls_per_token=16
+backend=linear median_ms=0.234510 p99_ms=0.234592 speedup_vs_llmm1=0.657767 saved_ms_per_token=-1.284114 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=llmm1 median_ms=0.154253 p99_ms=0.154345 speedup_vs_llmm1=1.000000 saved_ms_per_token=0.000000 bitwise_llmm1=True max_abs_diff_vs_linear=0.50000000 mean_abs_diff_vs_linear=0.05033361 finite=True
+backend=v1 median_ms=0.143131 p99_ms=0.147841 speedup_vs_llmm1=1.077703 saved_ms_per_token=0.177947 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=v2 median_ms=0.139296 p99_ms=0.143139 speedup_vs_llmm1=1.107378 saved_ms_per_token=0.239317 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=v3 median_ms=0.124463 p99_ms=0.124758 speedup_vs_llmm1=1.239349 saved_ms_per_token=0.476641 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=v4 median_ms=0.123140 p99_ms=0.123221 speedup_vs_llmm1=1.252658 saved_ms_per_token=0.497799 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+mode=llmm1_gfx936_shapes seed=17 name=mlp_gate_up m=34816 n=1 k=5120 calls_per_token=64
+backend=linear median_ms=0.498795 p99_ms=0.499521 speedup_vs_llmm1=0.725111 saved_ms_per_token=-8.775237 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=llmm1 median_ms=0.361682 p99_ms=0.362252 speedup_vs_llmm1=1.000000 saved_ms_per_token=0.000000 bitwise_llmm1=True max_abs_diff_vs_linear=0.50000000 mean_abs_diff_vs_linear=0.04977927 finite=True
+backend=v1 median_ms=0.324289 p99_ms=0.329017 speedup_vs_llmm1=1.115308 saved_ms_per_token=2.393166 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=v2 median_ms=0.308080 p99_ms=0.313275 speedup_vs_llmm1=1.173985 saved_ms_per_token=3.430487 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=v3 median_ms=0.299751 p99_ms=0.300044 speedup_vs_llmm1=1.206608 saved_ms_per_token=3.963573 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True
+backend=v4 median_ms=0.295115 p99_ms=0.295223 speedup_vs_llmm1=1.225564 saved_ms_per_token=4.260305 bitwise_llmm1=False max_abs_diff_vs_linear=0.00000000 mean_abs_diff_vs_linear=0.00000000 finite=True

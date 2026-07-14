@@ -685,3 +685,59 @@
   `1.00`，无精度扣分。
 - 产物目录：`testdata/experiments/UA2D-E8-ACCURACY_20260714_115333`；准确率输出位于
   `accuracy/output/local_accuracy_qwen35/20260714_115357`。
+
+### Qwen3.5-27B 最新源码快速 Profile（14:20）
+
+- 针对榜单源码 `vllm_cscc@a5cbd48` 完成三档热态吞吐、8--16K/16--32K P50 配对
+  `output=1/65` trace、UA2D/UA3D/GEMV micro、ROCprof 计数器、显存/KV、CPU 与本地模型盘
+  检查；所有吞吐请求均 `10/10` 成功。最新成绩为第 `48` 名、`85.0408` 分，距第 20 名
+  `2.5908` 分。
+- Decode kernel 为 `47.75--48.83 ms/token`，其中 GEMM `43.22--43.27 ms/token`
+  （`88.63%--90.50%`）；新 V4 专用 GEMV 占 `27.24 ms/token`，未覆盖的 Tensile
+  Linear 占约 `14.60 ms/token`。Prefill 中 GEMM 为 `52.70%--59.52%`，UA2D 为
+  `26.13%--34.58%`；GPU gap 约 1%（Prefill）和 1.63--1.66 ms/token（Decode），非首要方向。
+- ROCprof 表明 V4 `qwen35_gemv_wave2_lds_kernel` 使用 `24 VGPR / 10,752 B LDS`、无
+  LDS bank conflict、L2 hit 约 `14.66%--15.51%`，权重有效带宽约 `1.19--1.21 TB/s`，应优先
+  优化权重流式读取/流水线；UA2D E8 已消除 scratch、降低读写计数，但仍为 `256 VGPR` 且 LDS
+  bank conflict 较 E5 增加约 `47%`，是下一优先级。
+- CPU idle 约 `88%`、iowait 约 `0%`；本地模型权重读取约 `9.86 s`，启动/显存/KV 均非当前
+  单并发稳态吞吐主瓶颈。完整中文报告为
+  `调研交付物/qwen35_27b_latest_profile_20260714.md`，精简原始结果归档于
+  `testdata/profile_results/qwen35_27b_latest_20260714/`（未下载大型 trace）。
+
+### Qwen3.5-4B `HIP_FORCE_DEV_KERNARG` 快筛停止（16:13）
+
+- 以 `vllm_cscc@a5cbd48` 完成 `B0-H1-H1` 三轮 4B 快筛，三档每轮均 `5/5`、0 失败；
+  `HIP_FORCE_DEV_KERNARG=1` 两轮相对首个 B0 的加权 output throughput 分别仅
+  `+0.122%`、`+0.128%`，均未达到预设 `+0.5%` 门槛。
+- H1 两轮的输入 token、输出 token、逐样本文本均与 B0 完全一致，未见 NaN、OOM、VM
+  fault、服务重启或代理响应；H1 因收益不足淘汰，不进入最终确认。
+- 尾 B0 首次编排因 `5>` 被 shell 解释为文件描述符重定向而误用默认 50 条，已立即停止并
+  标记 `INVALID`；修正后的尾 B0 按用户要求中途停止并标记 `ABORTED`，两者均不参与统计。
+- 用户要求停止本轮实验，因此未执行 TunableOp 调优、T1、HT1 或最终确认，也未测试 27B、
+  未修改 vLLM 源码。远端已清理服务，端口 8001 不可连接，GPU 占用恢复至 2 MiB。
+
+### 合并 shiyi 的 86 分候选（16:26）
+
+- 将 `origin/shiyi@0038e9f` 无冲突快进合并至 `haha`，并推送 `origin/haha`；两远端分支
+  现均指向 `0038e9f`。该候选以组员报告的 `86` 分为依据，本次仅执行合并，未重复运行榜单或
+  远端端到端测试。
+- 最终有效差异包含 Qwen3.5 输出投影专用 GEMV 及已合入的 UA2D/运行时路径。`git diff --check`
+  通过；大部分跨分支文件统计来自行尾格式差异，忽略行尾空白后的实质修改为 `129` 行新增、`32`
+  行删除。`vllm_cscc` 工作树干净。
+
+### Qwen3.5-27B `0038e9f` 权威基线算子门禁（18:xx）
+
+- 将本地 `vllm_cscc@0038e9f` 的 C++、Python 路径和测试工具同步至远端，增量重建并安装
+  `_rocm_C` 成功；`vllm`、`vllm._rocm_C` 均实际导入
+  `/public/home/acoh0h1o0p/DCU/vllm_cscc`，`LLMM1Gfx936` 已注册。
+- 更新 merged 源码中两项 LLMM1 fallback 测试预期：`(34816,5120)` 以及模式 1 下的
+  `(14336,5120)/(16384,5120)` 走 `rows_per_block=8`，与当前
+  `_GFX936_LLMM1_CONFIGS` 一致。远端定向回归 `38 passed`。
+- 新增精确输出投影 `(5120,1,6144)` A/B 工具。随机种子 `0/1/17`、正反序 7 轮、每轮
+  100 次：专用 variant 5 中位数为 `0.047513/0.047515/0.047475 ms`，`F.linear` 为
+  `0.050186/0.050108/0.050151 ms`，稳定快 `5.46%--5.64%`，每调用节省约 `0.0026 ms`。
+  输出有限；最大绝对差 `1.0`，满足既有 BF16 相对误差门禁。
+- 首次三档服务基线因远端临时 `testdata/experiments/` 目录在任务结束后未保留，无法取得
+  `result.json`，标记为 `INVALID`，不用于性能判断；服务已停止、GPU 占用恢复为 `0%`。后续
+  必须将结果即时同步回本地后才可作为有效 A/B。
