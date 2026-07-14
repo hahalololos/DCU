@@ -616,3 +616,72 @@
   已清理模式 3 的生产源码、测试接口和环境变量说明，默认继续保持模式 2，源码回到
   干净的 `0e3450b`。下一步转向 UA2D 实验 8 基础上的 LDS 布局、bank 映射和
   VGPR live-range 结构重写。
+
+### Qwen3.5-27B UA2D 实验 8 快速收益门禁（09:43）
+
+- 基于 `vllm_cscc@0e3450b` 恢复独立实验 8 Triton kernel：保持实验 5的
+  `TILE32/BLOCK_M32/warps2`、KV tile 顺序和 online-softmax 更新顺序，将完整可见物理
+  block 与 causal 边界 block 拆环，并将 V load 延迟至 QK 和 softmax 概率计算之后；
+  实验 5默认路径未修改。
+- 本地 `py_compile`、`git diff --check` 通过；远端选择/环境变量测试 `15 passed`。
+  4B/27B、GQA=4/6、cache-block 边界和 `4095/4096` 长 query GPU 定向回归
+  `32 passed`。
+- 27B `q=4096`、实验 5/8同进程正反序交替七轮 micro：8K 为
+  `18.378306 -> 16.131500 ms`（`1.139281x`），16K 为
+  `40.827657 -> 35.717259 ms`（`1.143079x`），32K 为
+  `86.492228 -> 75.403604 ms`（`1.147057x`）；三档 P99 同向改善，输出均与实验 5
+  bitwise 一致，max abs diff 为 `0`。
+- 三档均超过快速冲刺 micro 门禁，进入 27B 中、长档端到端服务 A/B；实验 8仍保持非默认，
+  未完成服务验证前不得作为榜单候选。
+
+### Qwen3.5-27B UA2D 实验 8 正式保留与推送（11:20）
+
+- 完成实验 5 -> 实验 8 的 27B 三档正式服务 A/B，三档均 `10/10` 成功：4--8K output
+  throughput `18.527398 -> 18.599803 tok/s`（`+0.3908%`），8--16K
+  `14.392519 -> 14.568286 tok/s`（`+1.2212%`），16--32K
+  `9.307250 -> 9.549492 tok/s`（`+2.6027%`）。P99 TTFT 分别改善
+  `1.9568%/3.7379%/4.7500%`，P99 TPOT 三档均无回退。
+- 输入、输出 token 数一致；短档生成文本完全一致，27B micro 与 4B/27B 正确性矩阵已证明
+  实验 5/8 在覆盖形态下 bitwise 一致、max abs diff 为 `0`。中档首轮曾受 TTFT 长尾污染，
+  热态复测恢复正收益，最终采用热态复测结果；短档另补反向顺序复核。
+- 按当前榜单反解官方基线后，候选预测三档吞吐为
+  `19.3553/17.2076/12.6920 tok/s`，预计总分 `84.9218 -> 85.3590`，净增约
+  `+0.4372`，超过快速冲刺 `+0.30` 提交门槛。将
+  `VLLM_ROCM_QWEN_UA2D_EXPERIMENT` 默认值由 `5` 固化为 `8`。
+- 默认路径远端回归：未设置实验环境变量时确认值为 `8` 且选择 V3 kernel；选择/环境测试
+  `15 passed`，27B `query_len=4096`、`24` query heads、cache block `784` 的 GPU
+  边界用例 `1 passed`。优化已独立提交并推送至 `haha` 分支：`a5cbd48 perf: optimize
+  qwen35 ua2d block traversal`；未混入尚未验证的 GEMV V5。
+
+### Qwen3.5-27B gfx936 GEMV V5 淘汰（11:10）
+
+- 实现 512 threads、8 waves、两 wave/行、四行/workgroup 的 V5 kernel，一次 LDS
+  activation staging 供四行复用；`_rocm_C` Ninja 增量构建、安装和算子导入成功，mode 3
+  dispatch 定向回归 `13 passed`。
+- 三形状、随机种子 `0/1/17`、每候选七轮且每轮 100 次的 micro 中，V5 相对当前 V4
+  全部回退：GDN qkvz 约慢 `5.9%--7.8%`，Attention qkv+gate 约慢
+  `7.7%--10.2%`，MLP gate-up 约慢 `2.1%--2.2%`。按真实调用次数累计，V5 每 token
+  比 V4 多耗约 `1.00--1.08 ms`，远低于“每形状快至少 2%、累计节省至少
+  0.50 ms/token”的服务门槛。
+- 所有输出均有限，并与 `F.linear` 的 BF16 输出 max abs diff 为 `0`；失败原因是 512
+  threads 降低占用率且四行复用节省的 activation 读取不足以抵消同步/调度开销。未进行服务
+  A/B，已删除 V5 kernel、mode 3 dispatch、测试和说明，恢复提交 `a5cbd48` 的 V4 生产源码。
+  原始 micro 保存于 `testdata/experiments/GEMV-V5-MICRO_20260714_110840/results.txt`。
+
+### Qwen3.5-27B LM Head 探针淘汰（11:25）
+
+- 在恢复 V4 的同一扩展构建上探测 `(M=248320,N=1,K=5120)`：`F.linear`
+  `1.904024 ms`，现有 LLMM1 `2.522613 ms`，仅为 `0.7548x`，即回退约 `32.5%`。
+- 未达到三种子均 `1.08x` 的接入门槛，且现有 LLMM1 组织不适合该超大 M 形状；不新增
+  dispatch、不进行服务 A/B，LM Head 路线停止。
+
+### Qwen3.5-27B UA2D 实验 8 四类精度门禁（12:10）
+
+- 使用默认环境（未设置 `VLLM_ROCM_QWEN_UA2D_EXPERIMENT`，即实验 8）完成四类、共 109
+  条样本的 OpenCompass 门禁；服务端口 8001 已在测试后停止，GPU 显存恢复至 2 MiB。
+- 结果：HotpotQA `77.96`、GovReport `33.38`、retrieval_multi_point `100.00`、
+  aggregation_keyword_aggregation `100.00`。与已验证模式 2 基线
+  `77.96/33.51/100.00/100.00` 相比仅 GovReport 下降约 `0.39%`，四类精度系数均为
+  `1.00`，无精度扣分。
+- 产物目录：`testdata/experiments/UA2D-E8-ACCURACY_20260714_115333`；准确率输出位于
+  `accuracy/output/local_accuracy_qwen35/20260714_115357`。

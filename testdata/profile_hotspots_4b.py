@@ -21,6 +21,7 @@ def run_attention(
     model_size: str,
     verify: bool,
     ua2d_experiment: int,
+    compare_ua2d_experiment: int | None,
 ) -> None:
     torch.manual_seed(0)
     ua._is_qwen35_ua3d_scalar_block_candidate = lambda **_: mode == "ua3d"
@@ -107,6 +108,62 @@ def run_attention(
             softmax_segm_max=segment_max,
             softmax_segm_expsum=segment_expsum,
         )
+
+    if mode == "ua2d" and compare_ua2d_experiment is not None:
+        experiments = (compare_ua2d_experiment, ua2d_experiment)
+
+        def invoke_experiment(experiment: int) -> None:
+            os.environ["VLLM_ROCM_QWEN_UA2D_EXPERIMENT"] = str(experiment)
+            invoke()
+
+        for experiment in experiments:
+            for _ in range(3):
+                invoke_experiment(experiment)
+        torch.cuda.synchronize()
+
+        outputs = {}
+        for experiment in experiments:
+            invoke_experiment(experiment)
+            torch.cuda.synchronize()
+            outputs[experiment] = output.clone()
+
+        measurements = {experiment: [] for experiment in experiments}
+        for round_idx in range(7):
+            order = experiments if round_idx % 2 == 0 else experiments[::-1]
+            for experiment in order:
+                measurements[experiment].append(
+                    _time_cuda(
+                        lambda experiment=experiment: invoke_experiment(
+                            experiment
+                        ),
+                        repeats,
+                    )
+                )
+
+        baseline_ms = statistics.median(
+            measurements[compare_ua2d_experiment]
+        )
+        candidate_ms = statistics.median(measurements[ua2d_experiment])
+        diff = (
+            outputs[ua2d_experiment].float()
+            - outputs[compare_ua2d_experiment].float()
+        ).abs()
+        print(
+            f"mode=ua2d_ab model={model_size} context={context_len} "
+            f"baseline_experiment={compare_ua2d_experiment} "
+            f"candidate_experiment={ua2d_experiment} "
+            f"baseline_median_ms={baseline_ms:.6f} "
+            f"candidate_median_ms={candidate_ms:.6f} "
+            f"speedup={baseline_ms / candidate_ms:.6f} "
+            f"baseline_p99_ms={_p99(measurements[compare_ua2d_experiment]):.6f} "
+            f"candidate_p99_ms={_p99(measurements[ua2d_experiment]):.6f} "
+            f"bitwise={torch.equal(outputs[ua2d_experiment], outputs[compare_ua2d_experiment])} "
+            f"max_abs_diff={diff.max().item():.8f}"
+        )
+        os.environ["VLLM_ROCM_QWEN_UA2D_EXPERIMENT"] = str(
+            ua2d_experiment
+        )
+        return
 
     for _ in range(3):
         invoke()
@@ -434,6 +491,7 @@ def main() -> None:
     parser.add_argument("--model-size", choices=("4b", "27b"), default="4b")
     parser.add_argument("--verify", action="store_true")
     parser.add_argument("--ua2d-experiment", type=int, default=5)
+    parser.add_argument("--compare-ua2d-experiment", type=int)
     args = parser.parse_args()
 
     if args.mode == "linear_shapes":
@@ -455,6 +513,7 @@ def main() -> None:
             args.model_size,
             args.verify,
             args.ua2d_experiment,
+            args.compare_ua2d_experiment,
         )
 
 
